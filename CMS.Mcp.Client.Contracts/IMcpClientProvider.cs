@@ -1,12 +1,15 @@
-﻿namespace CMS.Mcp.Client.Contracts
+﻿namespace CMS.Mcp.Client.Contracts 
 {
-    using System;
+    using System.Collections.Generic;
     using System.Threading.Tasks;
+    using Microsoft.SemanticKernel;
     using ModelContextProtocol.Client;
+    using ModelContextProtocol.Protocol;
 
     public interface IMcpClientProvider
     {
-        Task<IMcpClient> GetClientAsync();
-        //Task<TResult> GetClientAsync<TResult>(Func<IMcpClient, ValueTask<TResult>> call);
+        Task<IList<McpClientTool>> ListToolsAsync();
+        Task<CallToolResult> CallToolAsync(string toolName, Dictionary<string, object> parameters);
+        Task<FunctionResult> InvokePromptAsync(string message);
     }
 }

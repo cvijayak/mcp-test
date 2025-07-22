@@ -168,31 +168,22 @@
             services.AddSingleton(sp =>
             {
                 var azureOpenAiChatOptions = sp.GetRequiredService<IOptions<AzureOpenAIChatOptions>>().Value;
-                var builder = Kernel.CreateBuilder();
 
                 var deploymentName = azureOpenAiChatOptions.DeploymentName;
                 var endpoint = azureOpenAiChatOptions.Endpoint.ToString();
                 var apiKey = azureOpenAiChatOptions.ApiKey;
-
-                var handler = new HttpClientHandler {
+                var handler = new HttpClientHandler
+                {
                     SslProtocols = System.Security.Authentication.SslProtocols.Tls12 |
                                    System.Security.Authentication.SslProtocols.Tls13,
-
                     ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 };
-
                 var httpClient = new HttpClient(handler);
 
-                var kernel = builder
+                return Kernel
+                    .CreateBuilder()
                     .AddAzureOpenAIChatCompletion(deploymentName: deploymentName, endpoint: endpoint, apiKey: apiKey, httpClient: httpClient)
                     .Build();
-
-                var mcpClientProvider = sp.GetRequiredService<IMcpClientProvider>();
-                var mcpClientTool = new McpClientTool(mcpClientProvider);
-
-                kernel.Plugins.AddFromObject(mcpClientTool, "MonkeyMcpClientTool");
-
-                return kernel;
             });
 
             return services.AddSingleton<IMcpClientProvider, McpClientProvider>();

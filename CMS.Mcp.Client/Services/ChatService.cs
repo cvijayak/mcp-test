@@ -10,20 +10,16 @@ namespace CMS.Mcp.Client.Services
     using Contracts.Models;
     using Contracts.Services;
     using Microsoft.Extensions.Logging;
-    using Microsoft.SemanticKernel;
-    using ModelContextProtocol.Client;
     using NJsonSchema;
     using Shared.Common.Extensions;
 
-    public class ChatService(IMcpClientProvider clientProvider, ILogger<ChatService> logger, Kernel semanticKernel) : IChatService
+    public class ChatService(IMcpClientProvider clientProvider, ILogger<ChatService> logger) : IChatService
     {
         public List<ChatMessageViewModel> Messages { get; } = [];
 
         public async Task<McpToolViewModel[]> GetToolsAsync()
         {
-            var client = await clientProvider.GetClientAsync();
-            var tools = await client.ListToolsAsync();
-
+            var tools = await clientProvider.ListToolsAsync();
             return await Task.WhenAll(tools.Select(async d =>
             {
                 var schema = await JsonSchema.FromJsonAsync(JsonSerializer.Serialize(d.ProtocolTool.InputSchema));
@@ -46,9 +42,7 @@ namespace CMS.Mcp.Client.Services
 
         public async Task<JsonNode> ExecuteToolAsync(string toolName, Dictionary<string, object> parameters)
         {
-            var client = await clientProvider.GetClientAsync();
-            var result = await client.CallToolAsync(toolName, parameters);
-
+            var result = await clientProvider.CallToolAsync(toolName, parameters);
             var textResult = (string)((dynamic)result.Content.FirstOrDefault())?.Text ?? string.Empty;
             var textResultIsValidJson = textResult.IsValidJson();
             var text = result.IsError == true ? JsonSerializer.Serialize(new { error = textResult }) 
@@ -59,14 +53,16 @@ namespace CMS.Mcp.Client.Services
 
         public async Task<ChatMessageViewModel> SendMessageAsync(string message)
         {
-            var userMessage = new ChatMessageViewModel {
+            var userMessage = new ChatMessageViewModel 
+            {
                 Content = message,
                 Role = ChatRole.User,
                 Timestamp = DateTime.UtcNow
             };
             Messages.Add(userMessage);
 
-            var assistantMessage = new ChatMessageViewModel {
+            var assistantMessage = new ChatMessageViewModel 
+            {
                 Content = "...",
                 Role = ChatRole.Assistant,
                 IsProcessing = true,
@@ -74,17 +70,20 @@ namespace CMS.Mcp.Client.Services
             };
             Messages.Add(assistantMessage);
 
-            try {
+            try 
+            {
                 logger.LogInformation($"Processing message: {message}");
 
-                var result = await semanticKernel.InvokePromptAsync(message);
+                var result = await clientProvider.InvokePromptAsync(message);
                 assistantMessage.Content = result.GetValue<string>();
 
                 logger.LogInformation($"Successfully generated response: {assistantMessage.Content[..Math.Min(assistantMessage.Content.Length, 50)]}...");
 
                 assistantMessage.IsProcessing = false;
                 return assistantMessage;
-            } catch (Exception ex) {
+            } 
+            catch (Exception ex) 
+            {
                 assistantMessage.Content = $"Error: {ex.Message}";
                 assistantMessage.IsProcessing = false;
                 logger.LogError(ex, "Error sending message");
