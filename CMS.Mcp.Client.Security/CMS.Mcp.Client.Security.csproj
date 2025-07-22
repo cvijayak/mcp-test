@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AssemblyInfo.Global.cs" Link="AssemblyInfo.Global.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CMS.Mcp.Client.Contracts\CMS.Mcp.Client.Contracts.csproj" />
+    <ProjectReference Include="..\CMS.Mcp.Shared.Api.Clients.Contracts\CMS.Mcp.Shared.Api.Clients.Contracts.csproj" />
+    <ProjectReference Include="..\CMS.Mcp.Shared.Common\CMS.Mcp.Shared.Common.csproj" />
+  </ItemGroup>
+
+</Project>

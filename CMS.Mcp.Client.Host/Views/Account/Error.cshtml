@@ -1,0 +1,24 @@
+@model CMS.Mcp.Client.Contracts.Models.ErrorViewModel
+
+@{
+    ViewData["Title"] = $"Error {Model.StatusCode}";
+}
+
+<div class="container text-center mt-5">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h2>Error @Model.StatusCode</h2>
+                </div>
+                <div class="card-body">
+                    <p class="lead">@Model.Message</p>
+                    <p class="text-muted">Request ID: @Model.RequestId</p>
+                    <div class="mt-4">
+                        <a href="/mcp/chat" class="btn btn-primary">Return to Chat</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

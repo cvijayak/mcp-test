@@ -1,0 +1,230 @@
+@model IEnumerable<string>
+@{
+    ViewData["Title"] = "MCP Tools";
+}
+<div class="container py-5">
+    <div class="row mb-4 align-items-center">
+        <div class="col">
+            <h2 class="display-5 fw-bold mb-2">
+                <i class="fas fa-tools text-primary me-2"></i> MCP Tools
+            </h2>
+            <p class="lead text-muted">Browse and execute available MCP tools below.</p>
+        </div>
+        <div class="col-auto text-end">
+            <a href="@Url.Action("Index", "Chat")" class="btn btn-lg btn-outline-secondary mt-2">
+                <i class="fas fa-arrow-left me-2"></i> Back to Chat
+            </a>
+        </div>
+    </div>
+    <div class="row g-4">
+        @if (Model != null && Model.Any())
+        {
+            foreach (var tool in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-cogs fa-2x text-info me-3"></i>
+                                <h5 class="card-title mb-0">@tool</h5>
+                            </div>
+                            <form method="post" asp-action="ExecuteTool" asp-controller="Chat" asp-route-toolName="@tool" class="mt-auto tool-form">
+                                <input type="hidden" name="toolName" value="@tool" />
+                                <div class="mb-3" id="param-fields-@tool.Replace(' ', '_')" style="display:none;"></div>
+                                <button type="button" class="btn btn-outline-primary w-100 mb-2 add-param-initial">Add Parameter</button>
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-play me-2"></i> Execute
+                                </button>
+                            </form>
+                            <div class="tool-result mt-3 p-2 bg-white border rounded shadow-sm" style="min-height:2rem;"></div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12">
+                <div class="alert alert-warning text-center">No tools available.</div>
+            </div>
+        }
+    </div>
+    <div class="row mt-5">
+    <!-- Back to Chat button moved to top right -->
+</div>
+
+<!-- Modal for tool result -->
+<div class="modal fade" id="toolResultModal" tabindex="-1" aria-labelledby="toolResultModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="toolResultModalLabel">Tool Execution Result</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="toolResultContent" class="bg-light p-3 rounded mb-0"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.tool-form').forEach(function(form) {
+        // Add parameter row functionality
+        // Add initial parameter button logic
+        form.querySelectorAll('.add-param-initial').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const paramFields = form.querySelector('.mb-3');
+                paramFields.style.display = '';
+                // Add first parameter row
+                const newRow = document.createElement('div');
+                newRow.className = 'input-group mb-2';
+                newRow.innerHTML = `
+                    <input type="text" class="form-control param-key" placeholder="Key" />
+                    <textarea class="form-control param-value" placeholder="Value (string, number, or JSON)"></textarea>
+                    <button type="button" class="btn btn-outline-danger remove-param">-</button>
+                `;
+                paramFields.appendChild(newRow);
+                newRow.querySelector('.remove-param').addEventListener('click', function() {
+                    newRow.remove();
+                    // If no more params, hide paramFields again and show Add Parameter button
+                    if (paramFields.children.length === 0) {
+                        paramFields.style.display = 'none';
+                        btn.style.display = '';
+                    }
+                });
+                btn.style.display = 'none';
+            });
+        });
+        // Add additional parameter row logic
+        form.addEventListener('click', function(e) {
+            if (e.target.classList.contains('add-param')) {
+                const paramFields = form.querySelector('.mb-3');
+                const newRow = document.createElement('div');
+                newRow.className = 'input-group mb-2';
+                newRow.innerHTML = `
+                    <input type="text" class="form-control param-key" placeholder="Key" />
+                    <textarea class="form-control param-value" placeholder="Value (string, number, or JSON)"></textarea>
+                    <button type="button" class="btn btn-outline-danger remove-param">-</button>
+                `;
+                paramFields.appendChild(newRow);
+                newRow.querySelector('.remove-param').addEventListener('click', function() {
+                    newRow.remove();
+                    if (paramFields.children.length === 0) {
+                        paramFields.style.display = 'none';
+                        form.querySelector('.add-param-initial').style.display = '';
+                    }
+                });
+            }
+        });
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const toolName = form.querySelector('input[name="toolName"]').value;
+            const paramDict = {};
+            let hasError = false;
+            let hasParams = false;
+            form.querySelectorAll('.input-group').forEach(function(row) {
+                const key = row.querySelector('.param-key')?.value;
+                const valueStr = row.querySelector('.param-value')?.value;
+                if (key) {
+                    hasParams = true;
+                    let parsedValue;
+                    // Try to parse as JSON, fallback to string or number
+                    try {
+                        parsedValue = JSON.parse(valueStr);
+                    } catch {
+                        // If not valid JSON, treat as number if possible, else string
+                        if (!isNaN(valueStr) && valueStr.trim() !== "") {
+                            parsedValue = Number(valueStr);
+                        } else {
+                            parsedValue = valueStr;
+                        }
+                    }
+                    paramDict[key] = parsedValue;
+                    row.querySelector('.param-value').classList.remove('is-invalid');
+                }
+            });
+            // Send as JSON
+            fetch('/mcp/chat/ExecuteTool', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ toolName: toolName, parameters: hasParams ? paramDict : {} })
+            })
+            .then(async response => {
+                const contentType = response.headers.get('content-type');
+                let resultText = '';
+                if (contentType && contentType.indexOf('application/json') !== -1) {
+                    // JSON response
+                    const json = await response.json();
+                    resultText = JSON.stringify(json, null, 2);
+                } else if (contentType && contentType.indexOf('text/html') !== -1) {
+                    // HTML response (error: backend returned a view)
+                    resultText = "Error: The server returned an HTML page instead of JSON. Please contact support or check the backend controller.";
+                } else {
+                    // Other content type
+                    resultText = await response.text();
+                }
+                document.getElementById('toolResultContent').textContent = resultText;
+                const modal = new bootstrap.Modal(document.getElementById('toolResultModal'));
+                modal.show();
+            })
+            .catch(error => {
+                document.getElementById('toolResultContent').textContent = "Error executing tool: " + error;
+                const modal = new bootstrap.Modal(document.getElementById('toolResultModal'));
+                modal.show();
+                console.error(error);
+            });
+        });
+    });
+});
+</script>
+</div>
+@section Styles {
+    <style>
+        .card {
+            border-radius: 1rem;
+            transition: box-shadow 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 0 24px rgba(32,64,102,0.15);
+        }
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .btn-success {
+            font-size: 1rem;
+            padding: 0.75rem 1.25rem;
+        }
+        .display-5 {
+            font-size: 2.5rem;
+        }
+        .lead {
+            font-size: 1.15rem;
+        }
+        .tool-result pre {
+            margin-bottom: 0;
+            font-size: 0.95rem;
+            background: none;
+            border: none;
+            box-shadow: none;
+        }
+        .tool-result {
+            word-break: break-word;
+            white-space: pre-wrap;
+            font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+            font-size: 0.95rem;
+            background: #f8f9fa;
+            border: 1px solid #e3e6ea;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            min-height: 2rem;
+        }
+    </style>
+}

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AssemblyInfo.Global.cs" Link="AssemblyInfo.Global.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CMS.Mcp.Shared.Api.Clients.Contracts\CMS.Mcp.Shared.Api.Clients.Contracts.csproj" />
+    <ProjectReference Include="..\CMS.Mcp.Shared.Common\CMS.Mcp.Shared.Common.csproj" />
+  </ItemGroup>
+
+</Project>

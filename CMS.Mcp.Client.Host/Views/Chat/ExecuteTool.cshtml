@@ -1,0 +1,36 @@
+@model object
+@{
+    ViewData["Title"] = "Tool Execution Result";
+}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title mb-4">Tool Execution Result</h3>
+                    @if (Model != null)
+                    {
+                        <pre class="bg-light p-3 rounded">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }))</pre>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">No result returned from tool execution.</div>
+                    }
+                    <a href="@Url.Action("GetMcpTools", "Chat")" class="btn btn-outline-primary mt-3">Back to Tools</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@section Styles {
+    <style>
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        pre {
+            font-size: 1rem;
+            white-space: pre-wrap;
+        }
+    </style>
+}

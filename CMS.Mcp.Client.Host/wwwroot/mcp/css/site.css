@@ -1,0 +1,31 @@
+/* CSS for the AI Chat Assistant - Blue Theme */
+:root {
+    --primary-blue: #1a73e8;
+    --secondary-blue: #4285f4;
+    --dark-blue: #0d47a1;
+    --light-blue: #bbdefb;
+    --pale-blue: #e3f2fd;
+    --white: #ffffff;
+    --light-gray: #f5f5f5;
+    --medium-gray: #e0e0e0;
+    --dark-gray: #757575;
+    --text-dark: #212121;
+    --text-light: #f5f5f5;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--light-gray);
+    color: var(--text-dark);
+}
+
+#header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background-color: var(--primary-blue);
+    color: var(--white);
+}

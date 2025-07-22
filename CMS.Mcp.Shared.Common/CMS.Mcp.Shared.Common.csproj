@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AssemblyInfo.Global.cs" Link="AssemblyInfo.Global.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ben.Demystifier" Version="0.4.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CMS.Mcp.Shared.Common.Contracts\CMS.Mcp.Shared.Common.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

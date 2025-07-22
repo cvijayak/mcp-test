@@ -1,0 +1,156 @@
+@model IEnumerable<string>
+@{
+    ViewData["Title"] = "MCP Tools";
+}
+<div class="container py-5">
+    <div class="row mb-4 align-items-center">
+        <div class="col">
+            <h2 class="display-5 fw-bold mb-2">
+                <i class="fas fa-tools text-primary me-2"></i> MCP Tools
+            </h2>
+            <p class="lead text-muted">Browse and execute available MCP tools below.</p>
+        </div>
+        <div class="col-auto text-end">
+            <a href="@Url.Action("Index", "Chat")" class="btn btn-lg btn-outline-secondary mt-2">
+                <i class="fas fa-arrow-left me-2"></i> Back to Chat
+            </a>
+        </div>
+    </div>
+    <div class="row g-4">
+        @if (Model != null && Model.Any())
+        {
+            foreach (var tool in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-cogs fa-2x text-info me-3"></i>
+                                <h5 class="card-title mb-0">@tool</h5>
+                            </div>
+                            <form method="post" asp-action="ExecuteTool" asp-controller="Chat" asp-route-toolName="@tool" class="mt-auto tool-form">
+                                <input type="hidden" name="toolName" value="@tool" />
+                                <div class="mb-3" id="param-fields-@tool.Replace(' ', '_')">
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control param-key" placeholder="Key" />
+                                        <textarea class="form-control param-value" placeholder="Value (JSON)"></textarea>
+                                        <button type="button" class="btn btn-outline-secondary add-param">+</button>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-play me-2"></i> Execute
+                                </button>
+                            </form>
+                            <div class="tool-result mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12">
+                <div class="alert alert-warning text-center">No tools available.</div>
+            </div>
+        }
+    </div>
+    <div class="row mt-5">
+    <!-- Back to Chat button moved to top right -->
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.tool-form').forEach(function(form) {
+        // Add parameter row functionality
+        form.querySelectorAll('.add-param').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const paramFields = btn.closest('.mb-3');
+                const newRow = document.createElement('div');
+                newRow.className = 'input-group mb-2';
+                newRow.innerHTML = `
+                    <input type="text" class="form-control param-key" placeholder="Key" />
+                    <textarea class="form-control param-value" placeholder="Value (JSON)"></textarea>
+                    <button type="button" class="btn btn-outline-danger remove-param">-</button>
+                `;
+                paramFields.appendChild(newRow);
+                newRow.querySelector('.remove-param').addEventListener('click', function() {
+                    newRow.remove();
+                });
+            });
+        });
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const toolName = form.querySelector('input[name="toolName"]').value;
+            const paramDict = {};
+            let hasError = false;
+            let hasParams = false;
+            form.querySelectorAll('.input-group').forEach(function(row) {
+                const key = row.querySelector('.param-key')?.value;
+                const valueStr = row.querySelector('.param-value')?.value;
+                if (key) {
+                    hasParams = true;
+                    try {
+                        paramDict[key] = valueStr ? JSON.parse(valueStr) : {};
+                    } catch (err) {
+                        hasError = true;
+                        row.querySelector('.param-value').classList.add('is-invalid');
+                    }
+                }
+            });
+            if (hasError) {
+                alert('One or more parameter values are not valid JSON.');
+                return;
+            }
+            // Send as JSON
+            fetch('/mcp/chat/ExecuteTool', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ toolName: toolName, parameters: hasParams ? paramDict : {} })
+            })
+            .then(response => response.text())
+            .then(data => {
+                // Show result below the form
+                const resultDiv = form.parentElement.querySelector('.tool-result');
+                try {
+                    const json = JSON.parse(data);
+                    resultDiv.innerHTML = `<pre class='bg-light p-3 rounded'>${JSON.stringify(json, null, 2)}</pre>`;
+                } catch {
+                    resultDiv.innerHTML = `<pre class='bg-light p-3 rounded'>${data}</pre>`;
+                }
+            })
+            .catch(error => {
+                alert('Error executing tool');
+                console.error(error);
+            });
+        });
+    });
+});
+</script>
+</div>
+@section Styles {
+    <style>
+        .card {
+            border-radius: 1rem;
+            transition: box-shadow 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 0 24px rgba(32,64,102,0.15);
+        }
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .btn-success {
+            font-size: 1rem;
+            padding: 0.75rem 1.25rem;
+        }
+        .display-5 {
+            font-size: 2.5rem;
+        }
+        .lead {
+            font-size: 1.15rem;
+        }
+    </style>
+}
