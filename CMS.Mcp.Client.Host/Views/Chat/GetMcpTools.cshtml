@@ -1,4 +1,4 @@
-@model IEnumerable<string>
+@model IEnumerable<McpToolViewModel>
 @{
     ViewData["Title"] = "MCP Tools";
 }
@@ -24,16 +24,24 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card shadow-sm h-100">
                         <div class="card-body d-flex flex-column justify-content-between">
-                            <div class="d-flex align-items-center mb-3">
-                                <i class="fas fa-cogs fa-2x text-info me-3"></i>
-                                <h5 class="card-title mb-0">@tool</h5>
+                            <div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-cogs fa-2x text-info me-3"></i>
+                                    <h5 class="card-title mb-0">@tool.Title</h5>
+                                </div>
+                                <h6 class="text-secondary mb-1">@tool.Name</h6>
+                                <p class="tool-description mb-3">@tool.Description</p>
                             </div>
-                            <form method="post" asp-action="ExecuteTool" asp-controller="Chat" asp-route-toolName="@tool" class="mt-auto tool-form">
-                                <input type="hidden" name="toolName" value="@tool" />
-                                <div class="mb-3" id="param-fields-@tool.Replace(' ', '_')" style="display:none;"></div>
+                            <form method="post" asp-action="ExecuteTool" asp-controller="Chat" asp-route-toolName="@tool.Name" class="mt-auto tool-form">
+                                <input type="hidden" name="toolName" value="@tool.Name" />
+                                <div class="mb-3" id="param-fields-@(tool.Name.ToString().Replace(" ", "_"))" style="display:none;"></div>
                                 <button type="button" class="btn btn-outline-primary w-100 mb-2 add-param-initial">Add Parameter</button>
-                                <button type="submit" class="btn btn-success w-100">
-                                    <i class="fas fa-play me-2"></i> Execute
+                                <button type="submit" class="btn btn-success w-100 execute-btn">
+                                    <span class="btn-text"><i class="fas fa-play me-2"></i> Execute</span>
+                                    <span class="btn-loading d-none">
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        Processing...
+                                    </span>
                                 </button>
                             </form>
                             <div class="tool-result mt-3 p-2 bg-white border rounded shadow-sm" style="min-height:2rem;"></div>
@@ -45,7 +53,10 @@
         else
         {
             <div class="col-12">
-                <div class="alert alert-warning text-center">No tools available.</div>
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No tools available. Please check your configuration or contact support.
+                </div>
             </div>
         }
     </div>
@@ -59,10 +70,34 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="toolResultModalLabel">Tool Execution Result</h5>
+        <div class="view-options ms-3">
+          <div class="btn-group" role="group" aria-label="View options">
+            <button type="button" class="btn btn-sm btn-outline-primary active" id="jsonViewBtn">JSON</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="treeViewBtn">Tree View</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="tableViewBtn">Table View</button>
+          </div>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <pre id="toolResultContent" class="bg-light p-3 rounded mb-0"></pre>
+        <div id="jsonView">
+          <pre id="toolResultContent" class="bg-light p-3 rounded mb-0"></pre>
+        </div>
+        <div id="treeView" class="d-none">
+          <div id="jsonTree" class="p-3 rounded mb-0 modern-json-tree"></div>
+        </div>
+        <div id="tableView" class="d-none">
+          <div class="table-responsive">
+            <table id="jsonTable" class="table table-striped">
+              <thead id="jsonTableHead"></thead>
+              <tbody id="jsonTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="imagesContainer" class="mt-3 d-none">
+          <h6 class="mb-2">Images</h6>
+          <div id="resultImages" class="d-flex flex-wrap gap-2"></div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -73,6 +108,23 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Set up the view toggle buttons
+    document.getElementById('jsonViewBtn').addEventListener('click', function() {
+        setActiveView('jsonView');
+    });
+    
+    document.getElementById('treeViewBtn').addEventListener('click', function() {
+        setActiveView('treeView');
+    });
+    
+    document.getElementById('tableViewBtn').addEventListener('click', function() {
+        setActiveView('tableView');
+    });
+    
+    // Set tree view as the default view
+    document.getElementById('treeViewBtn').classList.add('active');
+    document.getElementById('jsonViewBtn').classList.remove('active');
+    
     document.querySelectorAll('.tool-form').forEach(function(form) {
         // Add parameter row functionality
         // Add initial parameter button logic
@@ -123,6 +175,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Get the execute button and disable it
+            const executeBtn = form.querySelector('.execute-btn');
+            const btnText = executeBtn.querySelector('.btn-text');
+            const btnLoading = executeBtn.querySelector('.btn-loading');
+            
+            // Disable the button and show loading state
+            executeBtn.disabled = true;
+            btnText.classList.add('d-none');
+            btnLoading.classList.remove('d-none');
+            
             const toolName = form.querySelector('input[name="toolName"]').value;
             const paramDict = {};
             let hasError = false;
@@ -159,30 +222,406 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(async response => {
                 const contentType = response.headers.get('content-type');
                 let resultText = '';
+                let resultJson = null;
+                
                 if (contentType && contentType.indexOf('application/json') !== -1) {
                     // JSON response
-                    const json = await response.json();
-                    resultText = JSON.stringify(json, null, 2);
+                    resultJson = await response.json();
+                    resultText = JSON.stringify(resultJson, null, 2);
                 } else if (contentType && contentType.indexOf('text/html') !== -1) {
                     // HTML response (error: backend returned a view)
                     resultText = "Error: The server returned an HTML page instead of JSON. Please contact support or check the backend controller.";
                 } else {
                     // Other content type
                     resultText = await response.text();
+                    try {
+                        // Try to parse as JSON even if content type is not specified correctly
+                        resultJson = JSON.parse(resultText);
+                    } catch (e) {
+                        // Not JSON, continue with text
+                    }
                 }
+                
+                // Display the result in JSON view
                 document.getElementById('toolResultContent').textContent = resultText;
+                
+                // Set up other views if we have JSON data
+                if (resultJson) {
+                    // Set up tree view
+                    setupTreeView(resultJson);
+                    
+                    // Set up table view if data is suitable
+                    setupTableView(resultJson);
+                    
+                    // Look for image URLs
+                    findAndDisplayImages(resultJson);
+                }
+                
+                // Reset view buttons
+                document.querySelectorAll('.view-options .btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.getElementById('treeViewBtn').classList.add('active');
+                
+                // Show tree view by default, hide others
+                document.getElementById('jsonView').classList.add('d-none');
+                document.getElementById('treeView').classList.remove('d-none');
+                document.getElementById('tableView').classList.add('d-none');
+                
+                // Show the modal
                 const modal = new bootstrap.Modal(document.getElementById('toolResultModal'));
                 modal.show();
+                
+                // Re-enable the button
+                executeBtn.disabled = false;
+                btnText.classList.remove('d-none');
+                btnLoading.classList.add('d-none');
             })
             .catch(error => {
                 document.getElementById('toolResultContent').textContent = "Error executing tool: " + error;
+                
+                // Reset views for error case
+                // For error cases, we'll stick with JSON view as it's more reliable for showing error messages
+                document.getElementById('jsonView').classList.remove('d-none');
+                document.getElementById('treeView').classList.add('d-none');
+                document.getElementById('tableView').classList.add('d-none');
+                document.getElementById('imagesContainer').classList.add('d-none');
+                
+                // Reset view buttons
+                document.querySelectorAll('.view-options .btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.getElementById('jsonViewBtn').classList.add('active');
+                
                 const modal = new bootstrap.Modal(document.getElementById('toolResultModal'));
                 modal.show();
                 console.error(error);
+                
+                // Re-enable the button on error
+                executeBtn.disabled = false;
+                btnText.classList.remove('d-none');
+                btnLoading.classList.add('d-none');
             });
         });
     });
 });
+
+// Function to set the active view
+function setActiveView(viewId) {
+    // Hide all views
+    document.getElementById('jsonView').classList.add('d-none');
+    document.getElementById('treeView').classList.add('d-none');
+    document.getElementById('tableView').classList.add('d-none');
+    
+    // Show the selected view
+    document.getElementById(viewId).classList.remove('d-none');
+    
+    // Update the active button
+    document.querySelectorAll('.view-options .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Set active class on the clicked button
+    let btnId = viewId + 'Btn';
+    document.getElementById(btnId).classList.add('active');
+}
+
+// Function to set up the tree view visualization
+function setupTreeView(data) {
+    const container = document.getElementById('jsonTree');
+    container.innerHTML = '';
+    
+    // Create the tree structure
+    const rootElement = document.createElement('div');
+    rootElement.className = 'json-tree-root';
+    container.appendChild(rootElement);
+    
+    if (Array.isArray(data)) {
+        createArrayNode(rootElement, data, 'root');
+    } else if (typeof data === 'object' && data !== null) {
+        createObjectNode(rootElement, data, 'root');
+    } else {
+        // Simple value
+        rootElement.textContent = JSON.stringify(data);
+    }
+    
+    // Ensure all nodes are expanded by default
+    container.querySelectorAll('.json-tree-content').forEach(content => {
+        content.classList.add('expanded');
+        content.classList.remove('collapsed');
+    });
+    
+    container.querySelectorAll('.json-tree-key').forEach(key => {
+        key.classList.remove('collapsed');
+    });
+}
+
+// Function to create an object node in tree view
+function createObjectNode(parentElement, obj, key) {
+    const nodeContainer = document.createElement('div');
+    nodeContainer.className = 'json-tree-node';
+    
+    const keyElement = document.createElement('span');
+    keyElement.className = 'json-tree-key';
+    keyElement.textContent = key + ': {';
+    keyElement.onclick = function() {
+        nodeContainer.querySelector('.json-tree-content').classList.toggle('collapsed');
+        keyElement.classList.toggle('collapsed');
+    };
+    
+    const contentElement = document.createElement('div');
+    contentElement.className = 'json-tree-content expanded';
+    
+    parentElement.appendChild(nodeContainer);
+    nodeContainer.appendChild(keyElement);
+    nodeContainer.appendChild(contentElement);
+    
+    // Get and sort object keys for better readability
+    const entries = Object.entries(obj).sort((a, b) => a[0].localeCompare(b[0]));
+    
+    for (const [k, v] of entries) {
+        if (Array.isArray(v)) {
+            createArrayNode(contentElement, v, k);
+        } else if (typeof v === 'object' && v !== null) {
+            createObjectNode(contentElement, v, k);
+        } else {
+            // Simple value
+            const valueContainer = document.createElement('div');
+            valueContainer.className = 'json-tree-leaf';
+            
+            // Add proper value class based on type
+            const valueType = typeof v;
+            let valueClass = 'json-tree-value';
+            if (valueType === 'string') valueClass += ' string';
+            else if (valueType === 'number') valueClass += ' number';
+            else if (valueType === 'boolean') valueClass += ' boolean';
+            else if (v === null) valueClass += ' null';
+            
+            valueContainer.innerHTML = `<span class="json-tree-key">${k}:</span> <span class="${valueClass}">${formatValue(v)}</span>`;
+            contentElement.appendChild(valueContainer);
+        }
+    }
+    
+    const closeBrace = document.createElement('span');
+    closeBrace.textContent = '}';
+    contentElement.appendChild(closeBrace);
+}
+
+// Function to create an array node in tree view
+function createArrayNode(parentElement, arr, key) {
+    const nodeContainer = document.createElement('div');
+    nodeContainer.className = 'json-tree-node';
+    
+    const keyElement = document.createElement('span');
+    keyElement.className = 'json-tree-key';
+    // Add array length for better context
+    keyElement.textContent = `${key}: [ // ${arr.length} items`;
+    keyElement.onclick = function() {
+        nodeContainer.querySelector('.json-tree-content').classList.toggle('collapsed');
+        keyElement.classList.toggle('collapsed');
+    };
+    
+    const contentElement = document.createElement('div');
+    contentElement.className = 'json-tree-content expanded';
+    
+    parentElement.appendChild(nodeContainer);
+    nodeContainer.appendChild(keyElement);
+    nodeContainer.appendChild(contentElement);
+    
+    arr.forEach((item, index) => {
+        if (Array.isArray(item)) {
+            createArrayNode(contentElement, item, index);
+        } else if (typeof item === 'object' && item !== null) {
+            createObjectNode(contentElement, item, index);
+        } else {
+            // Simple value
+            const valueContainer = document.createElement('div');
+            valueContainer.className = 'json-tree-leaf';
+            
+            // Add proper value class based on type
+            const valueType = typeof item;
+            let valueClass = 'json-tree-value';
+            if (valueType === 'string') valueClass += ' string';
+            else if (valueType === 'number') valueClass += ' number';
+            else if (valueType === 'boolean') valueClass += ' boolean';
+            else if (item === null) valueClass += ' null';
+            
+            valueContainer.innerHTML = `<span class="json-tree-key">${index}:</span> <span class="${valueClass}">${formatValue(item)}</span>`;
+            contentElement.appendChild(valueContainer);
+        }
+    });
+    
+    const closeBracket = document.createElement('span');
+    closeBracket.textContent = ']';
+    contentElement.appendChild(closeBracket);
+}
+
+// Format values for display
+function formatValue(value) {
+    if (typeof value === 'string') {
+        return `"${escapeHtml(value)}"`;
+    } else if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    } else if (value === null) {
+        return 'null';
+    } else {
+        return String(value);
+    }
+}
+
+// Escape HTML for safe display
+function escapeHtml(str) {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Function to set up table view
+function setupTableView(data) {
+    const tableHead = document.getElementById('jsonTableHead');
+    const tableBody = document.getElementById('jsonTableBody');
+    
+    tableHead.innerHTML = '';
+    tableBody.innerHTML = '';
+    
+    // Hide table view button if data is not suitable for table view
+    const tableViewBtn = document.getElementById('tableViewBtn');
+    
+    // Check if data is an array of objects with consistent structure
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+        // Get all unique keys from all objects
+        const keys = new Set();
+        data.forEach(item => {
+            if (typeof item === 'object' && item !== null) {
+                Object.keys(item).forEach(key => keys.add(key));
+            }
+        });
+        
+        if (keys.size > 0) {
+            // Create table header
+            const headerRow = document.createElement('tr');
+            keys.forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key;
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+            
+            // Create table rows
+            data.forEach(item => {
+                if (typeof item === 'object' && item !== null) {
+                    const row = document.createElement('tr');
+                    keys.forEach(key => {
+                        const td = document.createElement('td');
+                        if (item.hasOwnProperty(key)) {
+                            const value = item[key];
+                            if (typeof value === 'object' && value !== null) {
+                                td.textContent = JSON.stringify(value);
+                            } else {
+                                td.textContent = value;
+                            }
+                        }
+                        row.appendChild(td);
+                    });
+                    tableBody.appendChild(row);
+                }
+            });
+            
+            // Enable table view
+            tableViewBtn.disabled = false;
+        } else {
+            // Data is not suitable for table view
+            tableViewBtn.disabled = true;
+        }
+    } else {
+        // Data is not suitable for table view
+        tableViewBtn.disabled = true;
+    }
+}
+
+// Function to find and display images from JSON
+function findAndDisplayImages(data) {
+    const imagesContainer = document.getElementById('imagesContainer');
+    const resultImages = document.getElementById('resultImages');
+    resultImages.innerHTML = '';
+    
+    const imageUrls = new Set();
+    
+    // Recursive function to find all URLs in the JSON data
+    function findUrls(obj, path = '') {
+        if (typeof obj === 'string') {
+            // Check if the string looks like an image URL
+            if (isImageUrl(obj)) {
+                imageUrls.add(obj);
+            }
+        } else if (Array.isArray(obj)) {
+            obj.forEach((item, index) => {
+                findUrls(item, `${path}[${index}]`);
+            });
+        } else if (typeof obj === 'object' && obj !== null) {
+            for (const key in obj) {
+                findUrls(obj[key], path ? `${path}.${key}` : key);
+            }
+        }
+    }
+    
+    findUrls(data);
+    
+    // Display found images
+    if (imageUrls.size > 0) {
+        imageUrls.forEach(url => {
+            const imgContainer = document.createElement('div');
+            imgContainer.className = 'image-thumbnail-container';
+            
+            imgContainer.innerHTML = `
+                <img src="${url}" alt="Result image" class="image-thumbnail">
+                <div class="image-overlay">
+                    <button class="btn btn-sm btn-light image-expand-btn" aria-label="View full image">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                </div>
+            `;
+            
+            resultImages.appendChild(imgContainer);
+            
+            // Add click event to open image in full size
+            const expandBtn = imgContainer.querySelector('.image-expand-btn');
+            expandBtn.addEventListener('click', () => {
+                window.open(url, '_blank');
+            });
+            
+            // Also allow clicking on the image itself
+            const thumbnail = imgContainer.querySelector('.image-thumbnail');
+            thumbnail.addEventListener('click', () => {
+                window.open(url, '_blank');
+            });
+        });
+        
+        imagesContainer.classList.remove('d-none');
+    } else {
+        imagesContainer.classList.add('d-none');
+    }
+}
+
+// Function to check if a string looks like an image URL
+function isImageUrl(str) {
+    // Basic check for common image extensions
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+    const lowercaseStr = str.toLowerCase();
+    
+    // Check if the string is a URL and ends with an image extension
+    if (
+        (lowercaseStr.startsWith('http://') || lowercaseStr.startsWith('https://')) &&
+        imageExtensions.some(ext => lowercaseStr.endsWith(ext))
+    ) {
+        return true;
+    }
+    
+    return false;
+}
 </script>
 </div>
 @section Styles {
@@ -197,10 +636,27 @@ document.addEventListener('DOMContentLoaded', function() {
         .card-title {
             font-size: 1.2rem;
             font-weight: 600;
+            color: #0366d6;
+        }
+        .tool-description {
+            font-size: 0.9rem;
+            color: #4a4a4a;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            max-height: 4.5em;
         }
         .btn-success {
             font-size: 1rem;
             padding: 0.75rem 1.25rem;
+            min-width: 120px;
+        }
+        
+        .execute-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
         }
         .display-5 {
             font-size: 2.5rem;
@@ -225,6 +681,171 @@ document.addEventListener('DOMContentLoaded', function() {
             border-radius: 0.5rem;
             margin-top: 1rem;
             min-height: 2rem;
+        }
+        
+        /* JSON Tree View styles - Modern Edition */
+        .json-tree-root {
+            font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+            padding: 0.75rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .json-tree-node {
+            margin-left: 1.75rem;
+            position: relative;
+            padding-left: 0.5rem;
+            border-left: 1px dashed rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .json-tree-node:hover {
+            border-left: 1px dashed rgba(0, 0, 0, 0.3);
+        }
+        
+        .json-tree-key {
+            color: #0366d6; /* GitHub blue */
+            font-weight: 500;
+            cursor: pointer;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            position: relative;
+        }
+        
+        .json-tree-key::before {
+            content: '';
+            display: inline-block;
+            width: 0.9rem;
+            height: 0.9rem;
+            margin-right: 0.4rem;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' width='16' height='16'%3E%3Cpath fill='%230366d6' d='M5.22 14.78a.75.75 0 001.06-1.06L2.06 9.5l4.22-4.22a.75.75 0 00-1.06-1.06L.47 8.97a.75.75 0 000 1.06l4.75 4.75z'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: center;
+            transform: rotate(-45deg);
+            transition: transform 0.2s ease;
+            vertical-align: middle;
+        }
+        
+        .json-tree-key.collapsed::before {
+            transform: rotate(0);
+        }
+        
+        .json-tree-key:hover {
+            text-decoration: none;
+            opacity: 0.8;
+        }
+        
+        .json-tree-key.collapsed::after {
+            content: " •••";
+            color: #6c757d;
+            font-weight: normal;
+        }
+        
+        .json-tree-value {
+            color: #e34c26; /* GitHub orange */
+            padding: 0 0.25rem;
+            border-radius: 3px;
+        }
+        
+        .json-tree-value.string {
+            color: #22863a; /* GitHub green */
+        }
+        
+        .json-tree-value.number {
+            color: #005cc5; /* GitHub blue */
+        }
+        
+        .json-tree-value.boolean {
+            color: #6f42c1; /* GitHub purple */
+        }
+        
+        .json-tree-value.null {
+            color: #6a737d; /* GitHub gray */
+            font-style: italic;
+        }
+        
+        .json-tree-content.collapsed {
+            display: none;
+        }
+        
+        .json-tree-content.expanded {
+            display: block !important;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @@keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .json-tree-leaf {
+            margin-left: 1.75rem;
+            padding: 0.2rem 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-radius: 3px;
+            transition: background-color 0.2s ease;
+        }
+        
+        .json-tree-leaf:hover {
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+        
+        /* View toggle buttons */
+        .view-options .btn-group {
+            margin-left: 15px;
+        }
+        
+        /* Modern JSON Tree container */
+        .modern-json-tree {
+            background-color: #f8fafb;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,.1);
+            border-radius: 8px;
+        }
+        
+        /* Image thumbnail enhancements */
+        .image-thumbnail-container {
+            display: inline-block;
+            margin: 5px;
+            border: 1px solid #e3e6ea;
+            border-radius: 4px;
+            overflow: hidden;
+            width: 100px;
+            height: 100px;
+            position: relative;
+        }
+        
+        .image-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.2s ease;
+        }
+        
+        .image-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .image-thumbnail-container:hover .image-overlay {
+            opacity: 1;
+        }
+        
+        .image-thumbnail-container:hover .image-thumbnail {
+            transform: scale(1.1);
         }
     </style>
 }

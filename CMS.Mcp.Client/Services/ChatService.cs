@@ -26,12 +26,24 @@ namespace CMS.Mcp.Client.Services
             }
         ];
 
-        public async Task<string[]> GetToolsAsync()
+        public async Task<McpToolViewModel[]> GetToolsAsync()
         {
             var client = await clientProvider.GetClientAsync();
             var tools = await client.ListToolsAsync();
 
-            return tools.Select(d => d.Name).ToArray();
+            return tools.Select(d =>
+            {
+                var parameters = d.ProtocolTool.InputSchema.TryGetProperty("properties", out var properties) && properties.ValueKind == JsonValueKind.Array ? 
+                    properties.EnumerateArray().Where(j => j.TryGetProperty("name", out _)).Select(j => j.GetProperty("name").GetString()).ToArray() : [];
+
+                return new McpToolViewModel
+                {
+                    Title = d.Title,
+                    Name = d.Name,
+                    Description = d.Description,
+                    Parameters = parameters
+                };
+            }).ToArray();
         }
 
         public async Task<JsonNode> ExecuteToolAsync(string toolName, Dictionary<string, object> parameters)

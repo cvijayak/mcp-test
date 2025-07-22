@@ -21,11 +21,4 @@ body {
     color: var(--text-dark);
 }
 
-#header {
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    background-color: var(--primary-blue);
-    color: var(--white);
-}
+

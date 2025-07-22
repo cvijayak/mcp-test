@@ -13,19 +13,19 @@
     [McpServerToolType]
     public sealed class MonkeyTools(MonkeyService monkeyService, MonkeyLocationService locationService)
     {
-        [McpServerTool, Description("Get a list of monkeys.")]
+        [McpServerTool(Title = "GetMonkeys"), Description("Get a list of monkeys.")]
         public async Task<string> GetMonkeys() {
             var monkeys = await monkeyService.GetMonkeys();
             return JsonSerializer.Serialize(monkeys);
         }
 
-        [McpServerTool, Description("Get a monkey by name.")]
+        [McpServerTool(Title = "GetMonkey"), Description("Get a monkey by name.")]
         public async Task<string> GetMonkey([Description("The name of the monkey to get details for")] string name) {
             var monkey = await monkeyService.GetMonkey(name);
             return JsonSerializer.Serialize(monkey);
         }
 
-        [McpServerTool, Description("Monkey Business, outputs random monkey and monkey-adjacent emoji")]
+        [McpServerTool(Title = "GetMonkeyBusiness"), Description("Monkey Business, outputs random monkey and monkey-adjacent emoji")]
         public Task<string> GetMonkeyBusiness() {
             var monkeyEmojis = new[] { "🐵", "🐒", "🦍", "🦧", "🙈", "🙉", "🙊", "🍌", "🌴", "🥥", "🌿", "🐾" };
             var random = new Random();
@@ -39,7 +39,7 @@
             return Task.FromResult(result);
         }
 
-        [McpServerTool, Description("Get a unique journey path with activities and health stats for a specific monkey.")]
+        [McpServerTool(Title = "GetMonkeyJourney"), Description("Get a unique journey path with activities and health stats for a specific monkey.")]
         public async Task<string> GetMonkeyJourney([Description("The name of the monkey to get a journey for")] string name) {
             var monkey = await monkeyService.GetMonkey(name);
             if (monkey == null) {
@@ -50,7 +50,7 @@
             return JsonSerializer.Serialize(journey);
         }
 
-        [McpServerTool, Description("Get journey paths for all available monkeys.")]
+        [McpServerTool(Title = "GetAllMonkeyJourneys"), Description("Get journey paths for all available monkeys.")]
         public async Task<string> GetAllMonkeyJourneys() {
             var monkeys = await monkeyService.GetMonkeys();
             var journeys = new List<MonkeyJourney>();

@@ -9,7 +9,7 @@ namespace CMS.Mcp.Client.Contracts.Services
     {
         List<ChatMessageViewModel> Messages { get; }
         
-        Task<string[]> GetToolsAsync();
+        Task<McpToolViewModel[]> GetToolsAsync();
         Task<JsonNode> ExecuteToolAsync(string toolName, Dictionary<string, object> parameters);
         Task<ChatMessageViewModel> SendMessageAsync(string message);
         Task ClearChatAsync();

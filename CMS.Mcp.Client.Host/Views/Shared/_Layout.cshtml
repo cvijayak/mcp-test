@@ -24,7 +24,102 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
     <link href="/mcp/css/site.css?v=@versionId" rel="stylesheet">
     <link href="/mcp/css/header.css?v=@versionId" rel="stylesheet">
-    <link href="/mcp/css/chat.css?v=@versionId" rel="stylesheet">
+    
+    <style>
+        /* Custom styles for profile dropdown */
+        .profile-dropdown {
+            width: 40% !important; /* Reduced width further */
+            min-width: 200px;
+            right: 0 !important;
+            left: auto !important;
+            position: absolute;
+            background-color: #f8f9fa;
+            border: 1px solid #d0d7de;
+            box-shadow: 0 4px 10px rgba(32, 64, 102, 0.15);
+        }
+        .navbar-nav.ms-auto {
+            margin-left: auto !important;
+        }
+        /* Add text ellipsis for overflow */
+        .app-name, .user-name, .user-email {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            display: block;
+        }
+        /* Styling for dropdown elements */
+        .profile-dropdown .dropdown-header {
+            background-color: #f0f4f8;
+            border-bottom: 1px solid #e1e4e8;
+            padding: 10px 12px;
+        }
+        .profile-dropdown .app-name {
+            color: #204066;
+            font-weight: 600;
+        }
+        .profile-dropdown .user-name {
+            color: #24292e;
+        }
+        .profile-dropdown .user-email {
+            color: #57606a;
+        }
+        .profile-dropdown .logout-link {
+            color: #d73a49;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .profile-dropdown .logout-link:hover {
+            text-decoration: underline;
+            color: #cb2431;
+        }
+        .profile-dropdown .user-icon {
+            color: #204066;
+        }
+        /* Profile icon styling */
+        .profile-link {
+            transition: all 0.2s ease;
+            border-radius: 50%;
+        }
+        .profile-link:hover {
+            background-color: rgba(32, 64, 102, 0.1);
+        }
+        .profile-link:active, 
+        .profile-link[aria-expanded="true"] {
+            background-color: rgba(32, 64, 102, 0.2);
+        }
+        
+        /* Improve dropdown spacing */
+        .profile-dropdown .dropdown-header {
+            padding: 8px 12px;
+        }
+        
+        .profile-dropdown .user-icon {
+            font-size: 1.2rem;
+            min-width: 24px;
+        }
+        
+        .profile-dropdown .logout-link {
+            white-space: nowrap;
+            margin-left: 8px;
+            font-size: 0.85rem;
+        }
+        
+        .profile-dropdown .app-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .profile-dropdown .user-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .profile-dropdown .user-email {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+    </style>
     
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -42,32 +137,32 @@
                 <span class="navbar-brand ms-3"></span>
             </div>
 
-            <div class="navbar-nav">
+            <div class="navbar-nav ms-auto">
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Chat" ? "active" : "")" 
                    href="@Url.Action("Index", "Chat")" title="Chat">
                     <i class="fas fa-comments" aria-hidden="true"></i>
                 </a>
-                <a class="nav-link" href="#" role="button"
+                <a class="nav-link profile-link" href="#" role="button"
                    id="profileDropdown" data-bs-toggle="dropdown"
                    aria-haspopup="true" aria-expanded="false">
                     <i class="fas fa-user"></i>
                 </a>
-                <ul class="dropdown-menu dropdown-menu-right"
+                <ul class="dropdown-menu dropdown-menu-end profile-dropdown"
                     aria-labelledby="profileDropdown">
                     <li class="dropdown-header">
                         <div class="flex-container justify-content-between align-items-center w-100">
-                            <div class="app-name" id="applicationName">AI Chat Assistant</div>
+                            <div class="app-name" id="applicationName" title="CMS AI Assistant">CMS AI Assistant</div>
                             <a class="logout-link" id="logoutItem" href="/mcp/account/logout">
-                                Logout
+                                <i class="fas fa-sign-out-alt me-1"></i> Logout
                             </a>
                         </div>
                     </li>
                     <li class="dropdown-header">
                         <div class="user-info flex-container align-items-center">
                             <i class="fas fa-user-circle user-icon"></i>
-                            <div class="user-details ms-3">
-                                <div class="user-name">@fullName</div>
-                                <div class="user-email">@email</div>
+                            <div class="user-details ms-2" style="width: calc(100% - 30px);">
+                                <div class="user-name" title="@fullName">@fullName</div>
+                                <div class="user-email" title="@email">@email</div>
                             </div>
                         </div>
                     </li>
@@ -76,9 +171,7 @@
         </nav>
     </div>
 
-    <div class="container-fluid mt-3">
-        @RenderBody()
-    </div>
+    @RenderBody()
 
     <div id="spinnerContainer" class="d-flex justify-content-center align-items-center vh-100">
         <div class="spinner-border" role="status" style="width: 4rem; height: 4rem; color: #204066;">
@@ -112,7 +205,7 @@
     <div id="chatModal" class="chat-modal">
         <div class="chat-modal-content">
             <div class="chat-modal-header">
-                <h5 class="chat-modal-title">AI Chat Assistant</h5>
+                <h5 class="chat-modal-title">CMS AI Assistant</h5>
                 <button id="closeChatBtn" class="chat-close-button">
                     <i class="fas fa-times"></i>
                 </button>
@@ -227,11 +320,6 @@
             // Initialize chat modal functionality
             initChatModal();
         });
-        
-        function closeRefreshModal() {
-            document.getElementById('refreshModal').style.display = 'none';
-            window.location.reload();
-        }
         
         // Chat Modal Functionality
         function initChatModal() {
@@ -391,6 +479,16 @@
                         window.location = '/mcp/account/logout';
                     });
             }
+            
+            // Function to send a message from the chat modal
+            function sendModalMessage() {
+                const content = modalMessageInput.value.trim();
+                if (!content) {
+                    return;
+                }
+                
+                // Handle full screen command
+                if (content.toLowerCase() === '/fullscreen') {
                     chatModal.style.width = '100vw';
                     chatModal.style.height = '100vh';
                     return;
