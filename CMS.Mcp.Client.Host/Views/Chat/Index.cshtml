@@ -101,19 +101,50 @@
             display: flex;
             height: 100%;
             width: 100%;
+            position: relative;
         }
 
         /* Sidebar styles */
         .chat-sidebar {
             width: 250px;
+            min-width: 200px;
+            max-width: 400px;
             background-color: white;
             border-right: 1px solid var(--light-blue, #d0d7de);
             box-shadow: 0 0 10px rgba(0,0,0,0.05);
             flex-shrink: 0;
             overflow-y: auto;
-            transition: transform 0.3s ease;
-            position: relative;
+            transition: all 0.3s ease;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
             z-index: 10;
+            resize: horizontal; /* Make the sidebar resizable */
+        }
+        
+        /* Add a resize handle to make resizing more obvious */
+        .sidebar-resize-handle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 100%;
+            cursor: col-resize;
+            background-image: linear-gradient(to right, 
+                transparent 1px, 
+                rgba(0,0,0,0.1) 1px, 
+                transparent 2px);
+            background-size: 3px 100%;
+            background-repeat: repeat-x;
+            z-index: 11;
+        }
+        
+        .sidebar-resize-handle:hover {
+            background-image: linear-gradient(to right, 
+                transparent 1px, 
+                rgba(32,64,102,0.2) 1px, 
+                transparent 2px);
         }
         
         .chat-sidebar.collapsed {
@@ -123,7 +154,7 @@
         /* Sidebar toggle button */
         .sidebar-toggle-btn {
             position: absolute;
-            left: 250px;
+            left: 250px; /* Default position, will be updated by JS when sidebar resizes */
             top: 50%;
             transform: translateY(-50%);
             z-index: 20;
@@ -160,11 +191,21 @@
 
         /* Main chat area styles */
         .chat-main {
-            flex: 1;
             display: flex;
             flex-direction: column;
             height: 100%;
             overflow: hidden;
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 250px; /* Default sidebar width */
+            transition: left 0.3s ease;
+        }
+        
+        /* When sidebar is collapsed or resized, adjust the chat window */
+        .chat-main.expanded {
+            left: 0; /* When sidebar is collapsed */
         }
 
         /* Header styles */
@@ -846,14 +887,53 @@
             const sidebar = document.getElementById('chatSidebar');
             const toggleBtn = document.getElementById('sidebarToggle');
             const toggleIcon = document.getElementById('sidebarToggleIcon');
+            const chatMain = document.querySelector('.chat-main');
             
             // Check if sidebar was collapsed previously
             const isSidebarCollapsed = localStorage.getItem('chatSidebarCollapsed') === 'true';
             
-            // Initialize sidebar state based on saved preference
+            // Get saved sidebar width if any
+            const savedSidebarWidth = localStorage.getItem('chatSidebarWidth');
+            
+            // Initialize sidebar state based on saved preferences
             if (isSidebarCollapsed) {
                 sidebar.classList.add('collapsed');
                 toggleBtn.classList.add('collapsed');
+                // Adjust chat window width on initial load if sidebar is collapsed
+                adjustChatWidth(true);
+            } else {
+                // Restore sidebar width if saved
+                if (savedSidebarWidth) {
+                    sidebar.style.width = `${savedSidebarWidth}px`;
+                    
+                    // Adjust chat main position accordingly
+                    chatMain.style.left = `${savedSidebarWidth}px`;
+                } else {
+                    // Default width
+                    chatMain.style.left = '250px';
+                }
+                
+                // Initialize toggle button position based on sidebar width
+                toggleBtn.style.left = `${sidebar.offsetWidth}px`;
+            }
+            
+            // Function to adjust chat window width based on sidebar state
+            function adjustChatWidth(isCollapsed) {
+                if (isCollapsed) {
+                    // When sidebar is collapsed, add a class to expand the chat window
+                    chatMain.classList.add('expanded');
+                    // Reset inline left position
+                    chatMain.style.left = '0';
+                } else {
+                    // When sidebar is visible, set the left position based on actual sidebar width
+                    const sidebarWidth = sidebar.offsetWidth;
+                    
+                    // Remove the expanded class first
+                    chatMain.classList.remove('expanded');
+                    
+                    // Set the left position of the chat main to match sidebar width
+                    chatMain.style.left = `${sidebarWidth}px`;
+                }
             }
             
             // Toggle sidebar when button is clicked
@@ -864,6 +944,65 @@
                 // Save state to localStorage
                 const isCollapsed = sidebar.classList.contains('collapsed');
                 localStorage.setItem('chatSidebarCollapsed', isCollapsed);
+                
+                // Adjust chat window width when sidebar is toggled
+                adjustChatWidth(isCollapsed);
+                
+                // Update toggle button position
+                if (isCollapsed) {
+                    toggleBtn.style.left = '0';
+                } else {
+                    // Give a small delay for the animation to complete
+                    setTimeout(() => {
+                        const sidebarRect = sidebar.getBoundingClientRect();
+                        toggleBtn.style.left = `${sidebarRect.width}px`;
+                    }, 50);
+                }
+            });
+            
+            // Also observe sidebar width changes that might come from resizing
+            const resizeObserver = new ResizeObserver((entries) => {
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                
+                if (!isCollapsed) {
+                    // Get current sidebar width from ResizeObserver
+                    const sidebarEntry = entries[0];
+                    const sidebarWidth = sidebarEntry.contentRect.width;
+                    
+                    // Save sidebar width preference
+                    if (sidebarWidth > 0) {
+                        localStorage.setItem('chatSidebarWidth', sidebarWidth);
+                    }
+                    
+                    // Update the chat main left position to match sidebar width
+                    chatMain.style.left = `${sidebarWidth}px`;
+                }
+                
+                // Make sure toggle button position matches sidebar width
+                // If sidebar is collapsed, position at 0, otherwise at the edge of sidebar width
+                if (isCollapsed) {
+                    toggleBtn.style.left = '0';
+                } else {
+                    // Calculate the precise position based on the sidebar width
+                    const sidebarRect = sidebar.getBoundingClientRect();
+                    toggleBtn.style.left = `${sidebarRect.width}px`;
+                }
+            });
+            
+            resizeObserver.observe(sidebar);
+            
+            // Add double-click to resize handle to reset sidebar width
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'sidebar-resize-handle';
+            resizeHandle.title = 'Double-click to reset width';
+            sidebar.appendChild(resizeHandle);
+            
+            resizeHandle.addEventListener('dblclick', () => {
+                // Reset sidebar to default width
+                sidebar.style.width = '250px';
+                localStorage.setItem('chatSidebarWidth', '250');
+                chatMain.style.left = '250px';
+                toggleBtn.style.left = '250px';
             });
         }
     </script>
