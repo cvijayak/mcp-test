@@ -2,6 +2,7 @@
 {
     using System;
     using System.IO;
+    using System.Net.Http;
     using Contracts;
     using Contracts.Options;
     using Contracts.Providers;
@@ -164,26 +165,35 @@
 
         private static IServiceCollection AddMcp(this IServiceCollection services)
         {
-            //services.AddSingleton(sp =>
-            //{
-            //    var azureOpenAiChatOptions = sp.GetRequiredService<IOptions<AzureOpenAIChatOptions>>().Value;
-            //    var builder = Kernel.CreateBuilder();
+            services.AddSingleton(sp =>
+            {
+                var azureOpenAiChatOptions = sp.GetRequiredService<IOptions<AzureOpenAIChatOptions>>().Value;
+                var builder = Kernel.CreateBuilder();
 
-            //    var deploymentName = azureOpenAiChatOptions.DeploymentName;
-            //    var endpoint = azureOpenAiChatOptions.Endpoint.ToString();
-            //    var apiKey = azureOpenAiChatOptions.ApiKey;
+                var deploymentName = azureOpenAiChatOptions.DeploymentName;
+                var endpoint = azureOpenAiChatOptions.Endpoint.ToString();
+                var apiKey = azureOpenAiChatOptions.ApiKey;
 
-            //    var kernel = builder
-            //        .AddAzureOpenAIChatCompletion(deploymentName: deploymentName, endpoint: endpoint, apiKey: apiKey)
-            //        .Build();
+                var handler = new HttpClientHandler {
+                    SslProtocols = System.Security.Authentication.SslProtocols.Tls12 |
+                                   System.Security.Authentication.SslProtocols.Tls13,
 
-            //    var mcpClientProvider = sp.GetRequiredService<IMcpClientProvider>();
-            //    var mcpPlugin = new McpClientPlugin(mcpClientProvider);
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                };
 
-            //    kernel.ImportPluginFromObject(mcpPlugin, "McpClient");
+                var httpClient = new HttpClient(handler);
 
-            //    return kernel;
-            //});
+                var kernel = builder
+                    .AddAzureOpenAIChatCompletion(deploymentName: deploymentName, endpoint: endpoint, apiKey: apiKey, httpClient: httpClient)
+                    .Build();
+
+                var mcpClientProvider = sp.GetRequiredService<IMcpClientProvider>();
+                var mcpClientTool = new McpClientTool(mcpClientProvider);
+
+                kernel.Plugins.AddFromObject(mcpClientTool, "MonkeyMcpClientTool");
+
+                return kernel;
+            });
 
             return services.AddSingleton<IMcpClientProvider, McpClientProvider>();
         }

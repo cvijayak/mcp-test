@@ -1,8 +1,8 @@
 using System;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using CMS.Mcp.Server;
 using CMS.Mcp.Server.Contracts;
+using CMS.Mcp.Shared.Common;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -38,22 +38,17 @@ services
         o.Events = new JwtBearerEvents {
             OnTokenValidated = context =>
             {
-                var name = context.Principal?.Identity?.Name ?? "unknown";
-                var email = context.Principal?.FindFirstValue("preferred_username") ?? "unknown";
-                Console.WriteLine($"Token validated for: {name} ({email})");
-
+                Console.WriteLine($"Token validated, Token : {context.SecurityToken.ToJson()}");
                 return Task.CompletedTask;
             },
             OnAuthenticationFailed = context =>
             {
                 Console.WriteLine($"Authentication failed: {context.Exception.Message}");
-
                 return Task.CompletedTask;
             },
             OnChallenge = _ =>
             {
                 Console.WriteLine("Challenging client to authenticate with Entra ID");
-
                 return Task.CompletedTask;
             }
         };

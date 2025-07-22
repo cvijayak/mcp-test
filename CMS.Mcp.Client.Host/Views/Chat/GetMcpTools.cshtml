@@ -34,8 +34,64 @@
                             </div>
                             <form method="post" asp-action="ExecuteTool" asp-controller="Chat" asp-route-toolName="@tool.Name" class="mt-auto tool-form">
                                 <input type="hidden" name="toolName" value="@tool.Name" />
-                                <div class="mb-3" id="param-fields-@(tool.Name.ToString().Replace(" ", "_"))" style="display:none;"></div>
-                                <button type="button" class="btn btn-outline-primary w-100 mb-2 add-param-initial">Add Parameter</button>
+                                
+                                @if (tool.Parameters != null && tool.Parameters.Length > 0)
+                                {
+                                    <div class="tool-parameters mb-3">
+                                        @foreach (var param in tool.Parameters)
+                                        {
+                                            <div class="mb-2 parameter-field">
+                                                <label class="form-label d-flex justify-content-between">
+                                                    <span>@param.Name</span>
+                                                    <small class="text-muted parameter-type">(@param.Type)</small>
+                                                </label>
+                                                @if (!string.IsNullOrEmpty(param.Description))
+                                                {
+                                                    <p class="parameter-desc form-text text-muted small mb-1">@param.Description</p>
+                                                }
+                                                
+                                                @if (param.Type.Equals("Boolean", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input param-value" type="checkbox" id="param-@(tool.Name)-@param.Name" 
+                                                               data-param-name="@param.Name" data-param-type="@param.Type">
+                                                        <label class="form-check-label" for="param-@(tool.Name)-@param.Name">Enable</label>
+                                                    </div>
+                                                }
+                                                else if (param.Type.Equals("Array", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <textarea class="form-control param-value" rows="3" placeholder="Enter JSON array"
+                                                              data-param-name="@param.Name" data-param-type="@param.Type"></textarea>
+                                                }
+                                                else if (param.Type.Equals("Object", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <textarea class="form-control param-value" rows="3" placeholder="Enter JSON object"
+                                                              data-param-name="@param.Name" data-param-type="@param.Type"></textarea>
+                                                }
+                                                else if (param.Type.Equals("Integer", StringComparison.OrdinalIgnoreCase) || 
+                                                        param.Type.Equals("Number", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <input type="number" class="form-control param-value" 
+                                                           placeholder="Enter a number"
+                                                           data-param-name="@param.Name" data-param-type="@param.Type" />
+                                                }
+                                                else
+                                                {
+                                                    <input type="text" class="form-control param-value" 
+                                                           placeholder="Enter value"
+                                                           data-param-name="@param.Name" data-param-type="@param.Type" />
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-info mb-3">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        This tool does not require any parameters.
+                                    </div>
+                                }
                                 <button type="submit" class="btn btn-success w-100 execute-btn">
                                     <span class="btn-text"><i class="fas fa-play me-2"></i> Execute</span>
                                     <span class="btn-loading d-none">
@@ -126,53 +182,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('jsonViewBtn').classList.remove('active');
     
     document.querySelectorAll('.tool-form').forEach(function(form) {
-        // Add parameter row functionality
-        // Add initial parameter button logic
-        form.querySelectorAll('.add-param-initial').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                const paramFields = form.querySelector('.mb-3');
-                paramFields.style.display = '';
-                // Add first parameter row
-                const newRow = document.createElement('div');
-                newRow.className = 'input-group mb-2';
-                newRow.innerHTML = `
-                    <input type="text" class="form-control param-key" placeholder="Key" />
-                    <textarea class="form-control param-value" placeholder="Value (string, number, or JSON)"></textarea>
-                    <button type="button" class="btn btn-outline-danger remove-param">-</button>
-                `;
-                paramFields.appendChild(newRow);
-                newRow.querySelector('.remove-param').addEventListener('click', function() {
-                    newRow.remove();
-                    // If no more params, hide paramFields again and show Add Parameter button
-                    if (paramFields.children.length === 0) {
-                        paramFields.style.display = 'none';
-                        btn.style.display = '';
-                    }
-                });
-                btn.style.display = 'none';
-            });
-        });
-        // Add additional parameter row logic
-        form.addEventListener('click', function(e) {
-            if (e.target.classList.contains('add-param')) {
-                const paramFields = form.querySelector('.mb-3');
-                const newRow = document.createElement('div');
-                newRow.className = 'input-group mb-2';
-                newRow.innerHTML = `
-                    <input type="text" class="form-control param-key" placeholder="Key" />
-                    <textarea class="form-control param-value" placeholder="Value (string, number, or JSON)"></textarea>
-                    <button type="button" class="btn btn-outline-danger remove-param">-</button>
-                `;
-                paramFields.appendChild(newRow);
-                newRow.querySelector('.remove-param').addEventListener('click', function() {
-                    newRow.remove();
-                    if (paramFields.children.length === 0) {
-                        paramFields.style.display = 'none';
-                        form.querySelector('.add-param-initial').style.display = '';
-                    }
-                });
-            }
-        });
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -190,6 +199,41 @@ document.addEventListener('DOMContentLoaded', function() {
             const paramDict = {};
             let hasError = false;
             let hasParams = false;
+            
+            // Handle tool-parameters (from McpToolParameter objects)
+            form.querySelectorAll('.tool-parameters .param-value').forEach(function(input) {
+                const key = input.dataset.paramName;
+                const paramType = input.dataset.paramType;
+                let value;
+                
+                // Extract value based on input type
+                if (paramType.toLowerCase() === 'boolean') {
+                    value = input.checked;
+                    hasParams = true;
+                } else if (input.value.trim() !== '') {
+                    hasParams = true;
+                    if (paramType.toLowerCase() === 'integer' || paramType.toLowerCase() === 'number') {
+                        value = parseFloat(input.value);
+                    } else if (paramType.toLowerCase() === 'array' || paramType.toLowerCase() === 'object') {
+                        try {
+                            value = JSON.parse(input.value);
+                            input.classList.remove('is-invalid');
+                        } catch (e) {
+                            input.classList.add('is-invalid');
+                            hasError = true;
+                            value = input.value; // Keep as string if JSON parse fails
+                        }
+                    } else {
+                        value = input.value;
+                    }
+                }
+                
+                if (key && value !== undefined) {
+                    paramDict[key] = value;
+                }
+            });
+            
+            // Handle manual parameter inputs (for tools without defined parameters)
             form.querySelectorAll('.input-group').forEach(function(row) {
                 const key = row.querySelector('.param-key')?.value;
                 const valueStr = row.querySelector('.param-value')?.value;
@@ -211,6 +255,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     row.querySelector('.param-value').classList.remove('is-invalid');
                 }
             });
+            
+            // Don't submit if there are errors in JSON inputs
+            if (hasError) {
+                alert("Please fix the invalid JSON in parameters");
+                executeBtn.disabled = false;
+                btnText.classList.remove('d-none');
+                btnLoading.classList.add('d-none');
+                return;
+            }
             // Send as JSON
             fetch('/mcp/chat/ExecuteTool', {
                 method: 'POST',
