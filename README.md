@@ -2,107 +2,128 @@
 
 This project implements a client-side application for interacting with Model Context Protocol (MCP) services. The solution provides tools for executing AI-powered capabilities through a clean, web-based interface.
 
-## Overview
+---
 
-The MCP Client is built as a .NET web application that communicates with AI services through the Model Context Protocol. It includes a user interface for browsing available AI tools, executing them with parameters, and viewing the results in different formats.
+## Purpose
 
-## Project Structure
+The MCP Client is designed to:
+- Provide a user-friendly web interface for interacting with AI tools and services via the Model Context Protocol.
+- Allow users to browse, configure, and execute AI tools with parameters.
+- Display results in rich formats, including support for HTML and code blocks.
+- Serve as a reference implementation for integrating Semantic Kernel and OpenAI/Azure OpenAI with .NET web applications.
 
-The solution consists of several projects:
+---
 
-- **CMS.Mcp.Client.Host**: The web application host that serves the UI and handles HTTP requests
-- **CMS.Mcp.Client**: Core client functionality for communicating with MCP services
-- **CMS.Mcp.Client.Contracts**: Interfaces and models defining the client API
-- **CMS.Mcp.Client.Security**: Authentication and authorization components
-- **CMS.Mcp.Server**: Server-side implementation for hosting MCP services
-- **CMS.Mcp.Server.Contracts**: Server-side interfaces and models
-- **CMS.Mcp.Shared**: Shared components used by both client and server implementations
-  - **Api.Clients**: HTTP client implementations for external APIs
-  - **Common**: Utility classes and extensions
+## Technologies Used
 
-## Features
+- **.NET 9.0**: Core framework for backend and web application.
+- **ASP.NET Core MVC**: For building the web UI and RESTful endpoints.
+- **Semantic Kernel**: For orchestrating AI skills and tool execution.
+- **OpenAI / Azure OpenAI**: For AI-powered chat and tool responses.
+- **Bootstrap 5**: For responsive and modern UI components.
+- **FontAwesome**: For iconography.
+- **JavaScript (ES6+)**: For client-side interactivity.
+- **DOMPurify**: For safe HTML rendering in chat.
+- **Razor Views**: For dynamic server-side rendering.
 
-### MCP Tools Interface
+---
 
-The application provides a web interface for:
+## NuGet Packages Used
 
-- Viewing available AI tools with descriptions
-- Configuring tool parameters through a dynamic form interface
-- Executing tools and viewing results in various formats:
-  - JSON view
-  - Tree view (hierarchical visualization)
-  - Table view (for array data)
-  - Image detection and display (for URLs that point to images)
+- `Microsoft.SemanticKernel`  
+  *Purpose*: Provides orchestration and integration with AI models and skills.
 
-### SSE-based Communication
+- `Microsoft.SemanticKernel.Agents.Core`  
+  *Purpose*: (If present) Used for advanced agent orchestration with Semantic Kernel.
 
-The client uses Server-Sent Events (SSE) for real-time communication with the MCP server:
+- `Microsoft.AspNetCore.Mvc`  
+  *Purpose*: ASP.NET Core MVC framework for controllers and views.
 
-- **McpSseTransport**: Handles the SSE-based connection to the MCP service
-- **McpClientProvider**: Creates and manages MCP client instances
+- `Microsoft.Extensions.Logging`  
+  *Purpose*: Logging infrastructure for .NET applications.
 
-### Security
+- `System.Text.Json`  
+  *Purpose*: JSON serialization/deserialization.
 
-Authentication is handled through JWT tokens:
+- `Microsoft.IdentityModel.*`  
+  *Purpose*: Authentication and authorization.
 
-- **ClaimStore**: Manages user claims and permissions
-- **TokenSessionManager**: Manages token lifecycle including renewal
+- `Microsoft.OpenApi.*`  
+  *Purpose*: Swagger/OpenAPI support for API documentation.
 
-## Getting Started
+- `Newtonsoft.Json`  
+  *Purpose*: (If present) Advanced JSON handling.
+
+> **Note:** Some packages may be referenced transitively or via project dependencies.
+
+---
+
+## How to Run the Project
 
 ### Prerequisites
 
-- .NET 9.0 SDK
-- Visual Studio 2022 or later (recommended)
+- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- Node.js (for front-end asset builds, if required)
+- Access to OpenAI or Azure OpenAI API (for AI chat/tools)
+- (Optional) Visual Studio 2022+ or VS Code
 
-### Running the Application
+### Steps
 
-1. Clone this repository
-2. Open the solution in Visual Studio
-3. Restore NuGet packages
-4. Build the solution
-5. Set CMS.Mcp.Client.Host as the startup project
-6. Run the application
+1. **Clone the repository**
+   ```sh
+   git clone <your-repo-url>
+   cd <repo-folder>
+   ```
 
-### Configuration
+2. **Restore NuGet packages**
+   ```sh
+   dotnet restore
+   ```
 
-The application is configured through appsettings.json files in both Client.Host and Server projects. Key configuration sections include:
+3. **Configure settings**
+   - Update `appsettings.json` or user secrets with your OpenAI/Azure OpenAI keys and endpoints.
+   - Example:
+     ```json
+     {
+       "OpenAI": {
+         "Key": "YOUR_API_KEY",
+         "Endpoint": "https://api.openai.com/v1/"
+       }
+     }
+     ```
 
-- **ServerOptions**: Configures the MCP server endpoint
-- **IdentityServerOptions**: Configures authentication
+4. **Build the solution**
+   ```sh
+   dotnet build
+   ```
 
-## Development
+5. **Run the web application**
+   ```sh
+   dotnet run --project CMS.Mcp.Client.Host
+   ```
+   The app will be available at `https://localhost:5001/mcp` by default.
 
-### Adding New MCP Tools
+6. **Access the UI**
+   - Open your browser and navigate to `https://localhost:5001/mcp/chat` for the chat interface.
+   - Go to `https://localhost:5001/mcp/chat/GetMcpTools` for the MCP Tools interface.
 
-1. Server-side: Implement new tools in the CMS.Mcp.Server project
-2. Tools are automatically discovered and exposed through the MCP interface
-3. Parameters defined in the tool schema are used to generate UI elements
+---
 
-### Key Components
+## Project Structure
 
-#### McpToolViewModel
+- **CMS.Mcp.Client.Host**: The web application host that serves the UI and handles HTTP requests.
+- **CMS.Mcp.Client**: Core client functionality for communicating with MCP services and orchestrating AI tools.
+- **CMS.Mcp.Client.Contracts**: Interfaces and models defining the client API and data contracts.
+- **CMS.Mcp.Client.Security**: Authentication and authorization components.
+- **CMS.Mcp.Server**: (If present) Server-side implementation for hosting MCP services.
+- **CMS.Mcp.Server.Contracts**: Server-side interfaces and models.
 
-This model represents an AI tool in the UI:
+---
 
-```csharp
-public class McpToolViewModel
-{
-    public string Title { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string[] Parameters { get; set; } = Array.Empty<string>();
-}
-```
+## Additional Notes
 
-#### ChatService
+- If you encounter StaticWebAssets compression errors during build, the project includes special handling in the CMS.Mcp.Client.Host.csproj file to disable problematic compression features.
+- The chat interface supports both plain text and HTML/rich content, with sanitization for security.
+- The MCP Tools page allows parameterized tool execution with collapsible parameter sections.
 
-The ChatService communicates with the MCP client to:
-
-- List available tools
-- Execute tools with parameters
-- Handle chat messages
-
-## Build Notes
-
-If you encounter StaticWebAssets compression errors during build, the project includes special handling in the CMS.Mcp.Client.Host.csproj file to disable problematic compression features.
+---
