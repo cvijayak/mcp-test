@@ -47,6 +47,7 @@
                 .AddSemanticKernel()
                 .AddMcp()
                 .AddOptions()
+                .AddStores()
                 .AddServices();
         }
 
@@ -64,9 +65,16 @@
             return services;
         }
 
+        private static IServiceCollection AddStores(this IServiceCollection services)
+        {
+            return services.AddSingleton<IChatMessageStore, ChatMessageStore>();
+        }
+
         private static IServiceCollection AddServices(this IServiceCollection services)
         {
-            return services.AddSingleton<IChatService, ChatService>();
+            return services
+                .AddTransient<IAiAssistantService, AiAssistantService>()
+                .AddTransient<Func<string, IMcpToolService>>(sp => n => ActivatorUtilities.CreateInstance<McpToolService>(sp, n));
         }
 
         private static IServiceCollection AddCors(this IServiceCollection services, IConfiguration configuration)
@@ -217,8 +225,7 @@
 
                         return existingClient;
                     };
-                })
-                .AddTransient<IMcpClientProxy, McpClientProxy>();
+                });
         }
     }
 }

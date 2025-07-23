@@ -13,7 +13,10 @@ namespace CMS.Mcp.Client.Controllers
 
     [Authorize]
     [Route("mcp/chat")]
-    public class ChatController(IChatService service, ILogger<ChatController> logger) : Controller
+    public class ChatController(IChatMessageStore chatMessageStore, 
+        IAiAssistantService aiAssistantService, 
+        Func<string, IMcpToolService> mcpToolServiceFactory, 
+        ILogger<ChatController> logger) : Controller
     {
         [Authorize]
         [Route("")]
@@ -40,7 +43,10 @@ namespace CMS.Mcp.Client.Controllers
 
             try
             {
-                var response = await service.SendMessageAsync(message);
+                var toolService = mcpToolServiceFactory("MonkeyMcpClientTool");
+                await toolService.RegisterToolsAsync();
+
+                var response = await aiAssistantService.SendMessageAsync(message);
                 return Json(response);
             }
             catch (Exception ex)
@@ -54,7 +60,7 @@ namespace CMS.Mcp.Client.Controllers
         [Route("ClearChat")]
         public async Task<IActionResult> ClearChat()
         {
-            await service.ClearChatAsync();
+            await aiAssistantService.ClearChatAsync();
             return Json(new { success = true, message = "Chat cleared successfully" });
         }
 
@@ -63,8 +69,8 @@ namespace CMS.Mcp.Client.Controllers
         [Route("GetMessages")]
         public IActionResult GetMessages()
         {
-            var messages = service.Messages;
-            logger.LogInformation($"GetMessages returning {messages.Count} messages");
+            var messages = chatMessageStore.List();
+            logger.LogInformation($"GetMessages returning {messages.Length} messages");
             return Json(messages);
         }
 
@@ -73,7 +79,8 @@ namespace CMS.Mcp.Client.Controllers
         [Route("GetMcpTools")]
         public async Task<IActionResult> GetMcpTools()
         {
-            var tools = await service.GetToolsAsync();
+            var toolService = mcpToolServiceFactory("MonkeyMcpClientTool");
+            var tools = await toolService.GetToolsAsync();
             return View(tools);
         }
 
@@ -83,7 +90,8 @@ namespace CMS.Mcp.Client.Controllers
         public async Task<IActionResult> ExecuteTool([FromBody] ExecuteToolRequest request)
         {
             var paramDict = request?.Parameters ?? new Dictionary<string, object>();
-            var result = await service.ExecuteToolAsync(request.ToolName, paramDict.ToDictionary(x => x.Key, x => x.Value));
+            var toolService = mcpToolServiceFactory("MonkeyMcpClientTool");
+            var result = await toolService.ExecuteToolAsync(request.ToolName, paramDict.ToDictionary(x => x.Key, x => x.Value));
             return Json(result);
         }
     }

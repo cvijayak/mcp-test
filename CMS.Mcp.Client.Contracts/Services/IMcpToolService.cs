@@ -5,13 +5,10 @@ namespace CMS.Mcp.Client.Contracts.Services
     using System.Threading.Tasks;
     using Models;
 
-    public interface IChatService
+    public interface IMcpToolService
     {
-        List<ChatMessageViewModel> Messages { get; }
-        
         Task<McpToolViewModel[]> GetToolsAsync();
         Task<JsonNode> ExecuteToolAsync(string toolName, Dictionary<string, object> parameters);
-        Task<ChatMessageViewModel> SendMessageAsync(string message);
-        Task ClearChatAsync();
+        Task RegisterToolsAsync();
     }
 }
