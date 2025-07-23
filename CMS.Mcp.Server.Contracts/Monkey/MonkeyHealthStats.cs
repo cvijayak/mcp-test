@@ -1,4 +1,4 @@
-﻿namespace CMS.Mcp.Server.Contracts
+﻿namespace CMS.Mcp.Server.Contracts.Monkey
 {
     public class MonkeyHealthStats {
         public int Energy { get; set; } // 0-100

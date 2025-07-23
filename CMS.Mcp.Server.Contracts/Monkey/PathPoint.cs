@@ -1,4 +1,4 @@
-﻿namespace CMS.Mcp.Server.Contracts
+﻿namespace CMS.Mcp.Server.Contracts.Monkey
 {
     using System;
 

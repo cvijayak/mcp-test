@@ -1,7 +1,8 @@
-﻿namespace CMS.Mcp.Server
+﻿namespace CMS.Mcp.Server.Monkey
 {
     using System;
     using System.Collections.Generic;
+    using CMS.Mcp.Server.Contracts.Monkey;
     using Contracts;
 
     public class MonkeyLocationService {

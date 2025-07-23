@@ -1,10 +1,11 @@
-﻿namespace CMS.Mcp.Server
+﻿namespace CMS.Mcp.Server.Monkey
 {
     using System;
     using System.Collections.Generic;
     using System.ComponentModel;
     using System.Text.Json;
     using System.Threading.Tasks;
+    using CMS.Mcp.Server.Contracts.Monkey;
     using Contracts;
     using Microsoft.AspNetCore.Authorization;
     using ModelContextProtocol.Server;
