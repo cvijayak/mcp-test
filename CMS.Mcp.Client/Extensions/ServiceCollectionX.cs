@@ -1,8 +1,10 @@
 ﻿namespace CMS.Mcp.Client.Extensions
 {
     using System;
+    using System.Collections.Concurrent;
     using System.IO;
     using System.Net.Http;
+    using System.Threading.Tasks;
     using Contracts;
     using Contracts.Options;
     using Contracts.Services;
@@ -12,6 +14,7 @@
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Options;
     using Microsoft.SemanticKernel;
+    using ModelContextProtocol.Client;
     using Security;
     using Security.Contracts;
     using Security.Contracts.Providers;
@@ -41,6 +44,7 @@
                 .AddSecurity(configuration)
                 .AddHttpClients(configuration)
                 .AddApiClients(configuration)
+                .AddSemanticKernel()
                 .AddMcp()
                 .AddOptions()
                 .AddServices();
@@ -173,9 +177,9 @@
                 });
         }
 
-        private static IServiceCollection AddMcp(this IServiceCollection services)
+        private static IServiceCollection AddSemanticKernel(this IServiceCollection services)
         {
-            services.AddSingleton(sp =>
+            return services.AddSingleton(sp =>
             {
                 var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
                 var azureOpenAiChatOptions = sp.GetRequiredService<IOptions<AzureOpenAIChatOptions>>().Value;
@@ -190,8 +194,31 @@
                     .AddAzureOpenAIChatCompletion(deploymentName: deploymentName, endpoint: endpoint, apiKey: apiKey, httpClient: httpClient)
                     .Build();
             });
+        }
 
-            return services.AddSingleton<IMcpClientProxy, McpClientProxy>();
+        private static IServiceCollection AddMcp(this IServiceCollection services)
+        {
+            return services
+                .AddSingleton<Func<Uri, string, Task<IMcpClient>>>(sp =>
+                {
+                    //TODO : Cache has to be cleared on logout or session expiration
+                    var cache = new ConcurrentDictionary<string, IMcpClient>();
+                    return async (endpoint, name) =>
+                    {
+                        var key = string.Format($"{endpoint.ToString()}:::{name}");
+                        if (!cache.TryGetValue(key, out var existingClient))
+                        {
+                            var sessionProvider = sp.GetRequiredService<ISessionProvider>();
+                            var transport = new McpSseTransport(endpoint, name, sessionProvider);
+
+                            existingClient = await McpClientFactory.CreateAsync(transport);
+                            cache[key] = existingClient;
+                        }
+
+                        return existingClient;
+                    };
+                })
+                .AddTransient<IMcpClientProxy, McpClientProxy>();
         }
     }
 }

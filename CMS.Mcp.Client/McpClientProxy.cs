@@ -6,51 +6,34 @@
     using System.Threading.Tasks;
     using Contracts;
     using Contracts.Options;
-    using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Options;
     using Microsoft.SemanticKernel;
     using Microsoft.SemanticKernel.Connectors.OpenAI;
     using ModelContextProtocol.Client;
     using ModelContextProtocol.Protocol;
-    using Security.Contracts.Providers;
 
-    public class McpClientProxy : IMcpClientProxy
+    public class McpClientProxy(Func<Uri, string, Task<IMcpClient>> mcpClient, IOptions<ServerOptions> serverOptions, Kernel kernel) : IMcpClientProxy
     {
-        private readonly Lazy<Task<IMcpClient>> _clientTask;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly ServerOptions _serverOptions = serverOptions.Value;
 
-        public McpClientProxy(IServiceProvider serviceProvider) 
-        {
-            _serviceProvider = serviceProvider;
-            _clientTask = new Lazy<Task<IMcpClient>>(async () =>
-            {
-                var serverOptions = _serviceProvider.GetRequiredService<IOptions<ServerOptions>>();
-                var sessionProvider = _serviceProvider.GetRequiredService<ISessionProvider>();
-                
-                var endpoint = serverOptions.Value.GetSseUri();
-                var transport = new McpSseTransport(endpoint, "MonkeyMcpClientTool", sessionProvider);
-
-                return await McpClientFactory.CreateAsync(transport);
-            });
-        }
+        private async Task<IMcpClient> GetMcpClient() => await mcpClient(_serverOptions.GetSseUri(), "MonkeyMcpClientTool");
 
         public async Task<IList<McpClientTool>> ListToolsAsync()
         {
-            var client = await _clientTask.Value;
+            var client = await GetMcpClient();
             return await client.ListToolsAsync();
         }
 
         public async Task<CallToolResult> CallToolAsync(string toolName, Dictionary<string, object> parameters) 
         {
-            var client = await _clientTask.Value;
+            var client = await GetMcpClient();
             return await client.CallToolAsync(toolName, parameters);
         }
 
         public async Task<FunctionResult> InvokePromptAsync(string message)
         {
 #pragma warning disable SKEXP0001
-            var client = await _clientTask.Value;
-            var kernel = _serviceProvider.GetRequiredService<Kernel>();
+            var client = await GetMcpClient();
             if (!kernel.Plugins.Contains("MonkeyMcpClientTool"))
             {
                 var tools = await client.ListToolsAsync();
