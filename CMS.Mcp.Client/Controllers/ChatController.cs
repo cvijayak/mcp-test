@@ -43,7 +43,7 @@ namespace CMS.Mcp.Client.Controllers
 
             try
             {
-                var toolService = mcpToolServiceFactory("MonkeyMcpClientTool");
+                var toolService = mcpToolServiceFactory("MonkeyMcpServer");
                 await toolService.RegisterToolsAsync();
 
                 var response = await aiAssistantService.SendMessageAsync(message);
@@ -79,7 +79,7 @@ namespace CMS.Mcp.Client.Controllers
         [Route("GetMcpTools")]
         public async Task<IActionResult> GetMcpTools()
         {
-            var toolService = mcpToolServiceFactory("MonkeyMcpClientTool");
+            var toolService = mcpToolServiceFactory("MonkeyMcpServer");
             var tools = await toolService.GetToolsAsync();
             return View(tools);
         }
@@ -90,7 +90,7 @@ namespace CMS.Mcp.Client.Controllers
         public async Task<IActionResult> ExecuteTool([FromBody] ExecuteToolRequest request)
         {
             var paramDict = request?.Parameters ?? new Dictionary<string, object>();
-            var toolService = mcpToolServiceFactory("MonkeyMcpClientTool");
+            var toolService = mcpToolServiceFactory("MonkeyMcpServer");
             var result = await toolService.ExecuteToolAsync(request.ToolName, paramDict.ToDictionary(x => x.Key, x => x.Value));
             return Json(result);
         }
