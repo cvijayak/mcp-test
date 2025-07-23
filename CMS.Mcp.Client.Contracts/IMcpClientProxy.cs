@@ -6,7 +6,7 @@
     using ModelContextProtocol.Client;
     using ModelContextProtocol.Protocol;
 
-    public interface IMcpClientProvider
+    public interface IMcpClientProxy
     {
         Task<IList<McpClientTool>> ListToolsAsync();
         Task<CallToolResult> CallToolAsync(string toolName, Dictionary<string, object> parameters);

@@ -1,4 +1,4 @@
-﻿namespace CMS.Mcp.Client.Contracts
+﻿namespace CMS.Mcp.Client.Security.Contracts
 {
     public interface IClaimStore
     {

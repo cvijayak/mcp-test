@@ -4,7 +4,7 @@
     using System.Net.Http;
     using System.Security.Claims;
     using System.Threading.Tasks;
-    using Contracts.Options;
+    using Client.Contracts.Options;
     using Microsoft.AspNetCore.Authentication;
     using Microsoft.AspNetCore.Authentication.OAuth;
     using Microsoft.AspNetCore.Http;

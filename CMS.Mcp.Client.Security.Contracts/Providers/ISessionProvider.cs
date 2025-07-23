@@ -1,4 +1,4 @@
-﻿namespace CMS.Mcp.Client.Contracts.Providers 
+﻿namespace CMS.Mcp.Client.Security.Contracts.Providers 
 {
     using System;
     using System.Threading.Tasks;

@@ -12,7 +12,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\CMS.Mcp.Client\CMS.Mcp.Client.csproj" />
-		<ProjectReference Include="..\CMS.Mcp.Shared.Configuration\CMS.Mcp.Shared.Configuration.csproj" />
 	</ItemGroup>
 
 	<!-- Configure StaticWebAssets properly -->

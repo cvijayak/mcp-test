@@ -13,17 +13,17 @@ namespace CMS.Mcp.Client.Services
     using NJsonSchema;
     using Shared.Common.Extensions;
 
-    public class ChatService(IMcpClientProvider clientProvider, ILogger<ChatService> logger) : IChatService
+    public class ChatService(IMcpClientProxy clientProxy, ILogger<ChatService> logger) : IChatService
     {
         public List<ChatMessageViewModel> Messages { get; } = [];
 
         public async Task<McpToolViewModel[]> GetToolsAsync()
         {
-            var tools = await clientProvider.ListToolsAsync();
-            return await Task.WhenAll(tools.Select(async d =>
+            var result = await clientProxy.ListToolsAsync();
+            return await Task.WhenAll(result.Select(async d =>
             {
                 var schema = await JsonSchema.FromJsonAsync(JsonSerializer.Serialize(d.ProtocolTool.InputSchema));
-                var properties = schema.Properties.Select(p => new McpToolParameter
+                var properties = schema.Properties.Select(p => new McpToolViewModel.McpToolParameter
                 {
                     Name = p.Value.Name,
                     Description = p.Value.Description,
@@ -42,7 +42,7 @@ namespace CMS.Mcp.Client.Services
 
         public async Task<JsonNode> ExecuteToolAsync(string toolName, Dictionary<string, object> parameters)
         {
-            var result = await clientProvider.CallToolAsync(toolName, parameters);
+            var result = await clientProxy.CallToolAsync(toolName, parameters);
             var textResult = (string)((dynamic)result.Content.FirstOrDefault())?.Text ?? string.Empty;
             var textResultIsValidJson = textResult.IsValidJson();
             var text = result.IsError == true ? JsonSerializer.Serialize(new { error = textResult }) 
@@ -74,7 +74,7 @@ namespace CMS.Mcp.Client.Services
             {
                 logger.LogInformation($"Processing message: {message}");
 
-                var result = await clientProvider.InvokePromptAsync(message);
+                var result = await clientProxy.InvokePromptAsync(message);
                 assistantMessage.Content = result.GetValue<string>();
 
                 logger.LogInformation($"Successfully generated response: {assistantMessage.Content[..Math.Min(assistantMessage.Content.Length, 50)]}...");

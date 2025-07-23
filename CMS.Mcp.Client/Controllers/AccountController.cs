@@ -1,16 +1,16 @@
-﻿namespace CMS.Mcp.Client.Controllers 
+﻿namespace CMS.Mcp.Client.Controllers
 {
     using System.Net;
     using System.Threading;
     using System.Threading.Tasks;
     using Contracts;
-    using Contracts.Providers;
     using Contracts.Responses;
     using Microsoft.AspNetCore.Authentication;
     using Microsoft.AspNetCore.Authentication.Cookies;
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc;
+    using Security.Contracts.Providers;
     using Shared.Api.Clients.Contracts;
 
     [Route("mcp/account")]

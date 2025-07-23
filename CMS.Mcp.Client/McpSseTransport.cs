@@ -4,9 +4,9 @@
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
-    using Contracts.Providers;
     using ModelContextProtocol.Client;
     using ModelContextProtocol.Protocol;
+    using Security.Contracts.Providers;
 
     public class McpSseTransport(Uri endpoint, string name, ISessionProvider sessionProvider) : IClientTransport
     {

@@ -5,8 +5,8 @@
     using Microsoft.AspNetCore.Mvc;
     using Newtonsoft.Json;
 
-    public class ExternalApiErrorResponse : ProblemDetails 
-	{
+    public class ExternalApiErrorResponse : ProblemDetails, IApiResponse
+    {
 		public ExternalApiErrorResponse(HttpStatusCode statusCode)
 		{
 			Status = (int)statusCode;

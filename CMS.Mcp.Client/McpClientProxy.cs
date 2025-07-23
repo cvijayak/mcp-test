@@ -1,4 +1,4 @@
-﻿namespace CMS.Mcp.Client 
+﻿namespace CMS.Mcp.Client
 {
     using System;
     using System.Collections.Generic;
@@ -6,20 +6,20 @@
     using System.Threading.Tasks;
     using Contracts;
     using Contracts.Options;
-    using Contracts.Providers;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Options;
     using Microsoft.SemanticKernel;
     using Microsoft.SemanticKernel.Connectors.OpenAI;
     using ModelContextProtocol.Client;
     using ModelContextProtocol.Protocol;
+    using Security.Contracts.Providers;
 
-    public class McpClientProvider : IMcpClientProvider
+    public class McpClientProxy : IMcpClientProxy
     {
         private readonly Lazy<Task<IMcpClient>> _clientTask;
         private readonly IServiceProvider _serviceProvider;
 
-        public McpClientProvider(IServiceProvider serviceProvider) 
+        public McpClientProxy(IServiceProvider serviceProvider) 
         {
             _serviceProvider = serviceProvider;
             _clientTask = new Lazy<Task<IMcpClient>>(async () =>
@@ -28,9 +28,9 @@
                 var sessionProvider = _serviceProvider.GetRequiredService<ISessionProvider>();
                 
                 var endpoint = serverOptions.Value.GetSseUri();
-                var authInjectingTransport = new McpSseTransport(endpoint, "MonkeyMcpClientTool", sessionProvider);
+                var transport = new McpSseTransport(endpoint, "MonkeyMcpClientTool", sessionProvider);
 
-                return await McpClientFactory.CreateAsync(authInjectingTransport);
+                return await McpClientFactory.CreateAsync(transport);
             });
         }
 

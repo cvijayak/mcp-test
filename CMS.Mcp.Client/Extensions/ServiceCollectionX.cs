@@ -5,7 +5,6 @@
     using System.Net.Http;
     using Contracts;
     using Contracts.Options;
-    using Contracts.Providers;
     using Contracts.Services;
     using Microsoft.AspNetCore.Authentication.Cookies;
     using Microsoft.AspNetCore.DataProtection;
@@ -14,6 +13,8 @@
     using Microsoft.Extensions.Options;
     using Microsoft.SemanticKernel;
     using Security;
+    using Security.Contracts;
+    using Security.Contracts.Providers;
     using Security.Extensions;
     using Security.Providers;
     using Services;
@@ -28,7 +29,7 @@
 
     public static class ServiceCollectionX
     {
-        public static IServiceCollection AddClientServices(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddMcpAgent(this IServiceCollection services, IConfiguration configuration)
         {
             return services
                 .AddTransient(_ => JsonObjectSerializerFactory.Create())
@@ -41,7 +42,8 @@
                 .AddHttpClients(configuration)
                 .AddApiClients(configuration)
                 .AddMcp()
-                .AddOptions();
+                .AddOptions()
+                .AddServices();
         }
 
         private static IServiceCollection AddOptions(this IServiceCollection services, IConfiguration configuration)
@@ -58,11 +60,9 @@
             return services;
         }
 
-        public static IServiceCollection AddMcpClient(this IServiceCollection services)
+        private static IServiceCollection AddServices(this IServiceCollection services)
         {
-            services.AddSingleton<IChatService, ChatService>();
-            services.AddHttpClient();
-            return services;
+            return services.AddSingleton<IChatService, ChatService>();
         }
 
         private static IServiceCollection AddCors(this IServiceCollection services, IConfiguration configuration)
@@ -123,7 +123,17 @@
             var identityServerSection = configuration.GetSection(ConfigSectionNames.IDENTITY_SERVER);
             var identityServer = identityServerSection.Get<IdentityServerOptions>();
 
-            services.AddHttpClient(HttpClientInstances.IDENTITY_SERVER_HTTP_CLIENT_INSTANCE, client => client.BaseAddress = identityServer.Authority);
+            services
+                .AddHttpClient(HttpClientInstances.IDENTITY_SERVER_HTTP_CLIENT_INSTANCE, client => client.BaseAddress = identityServer.Authority);
+
+            services
+                .AddHttpClient(HttpClientInstances.AZURE_OPEN_AI_CHAT_HTTP_CLIENT_INSTANCE, _ => { })
+                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+                {
+                    SslProtocols = System.Security.Authentication.SslProtocols.Tls12 |
+                                   System.Security.Authentication.SslProtocols.Tls13,
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                });
 
             return services;
         }
@@ -167,18 +177,13 @@
         {
             services.AddSingleton(sp =>
             {
+                var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
                 var azureOpenAiChatOptions = sp.GetRequiredService<IOptions<AzureOpenAIChatOptions>>().Value;
 
                 var deploymentName = azureOpenAiChatOptions.DeploymentName;
                 var endpoint = azureOpenAiChatOptions.Endpoint.ToString();
                 var apiKey = azureOpenAiChatOptions.ApiKey;
-                var handler = new HttpClientHandler
-                {
-                    SslProtocols = System.Security.Authentication.SslProtocols.Tls12 |
-                                   System.Security.Authentication.SslProtocols.Tls13,
-                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-                };
-                var httpClient = new HttpClient(handler);
+                var httpClient = httpFactory.CreateClient(HttpClientInstances.AZURE_OPEN_AI_CHAT_HTTP_CLIENT_INSTANCE);
 
                 return Kernel
                     .CreateBuilder()
@@ -186,7 +191,7 @@
                     .Build();
             });
 
-            return services.AddSingleton<IMcpClientProvider, McpClientProvider>();
+            return services.AddSingleton<IMcpClientProxy, McpClientProxy>();
         }
     }
 }

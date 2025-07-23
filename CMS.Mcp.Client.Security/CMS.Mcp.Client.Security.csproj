@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CMS.Mcp.Client.Contracts\CMS.Mcp.Client.Contracts.csproj" />
+    <ProjectReference Include="..\CMS.Mcp.Client.Security.Contracts\CMS.Mcp.Client.Security.Contracts.csproj" />
     <ProjectReference Include="..\CMS.Mcp.Shared.Api.Clients.Contracts\CMS.Mcp.Shared.Api.Clients.Contracts.csproj" />
     <ProjectReference Include="..\CMS.Mcp.Shared.Common\CMS.Mcp.Shared.Common.csproj" />
   </ItemGroup>
