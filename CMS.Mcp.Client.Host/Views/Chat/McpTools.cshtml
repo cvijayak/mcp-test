@@ -54,14 +54,10 @@
             </div>
         }
     </div>
-    <div class="row mt-5">
-    <!-- Back to Chat button moved to top right -->
-</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.tool-form').forEach(function(form) {
-        // Add parameter row functionality
         form.querySelectorAll('.add-param').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const paramFields = btn.closest('.mb-3');

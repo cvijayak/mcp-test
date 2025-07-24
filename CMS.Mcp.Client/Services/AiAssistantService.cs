@@ -9,9 +9,9 @@ namespace CMS.Mcp.Client.Services
     using Microsoft.SemanticKernel;
     using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-    public class AiAssistantService(IChatMessageStore chatMessageStore, Kernel kernel, ILogger<AiAssistantService> logger) : IAiAssistantService
+    public class AiAssistantService(IChatMessageStore chatMessageStore, Func<string, Kernel> kernelFactory, ILogger<AiAssistantService> logger) : IAiAssistantService
     {
-        public async Task<ChatMessageViewModel> SendMessageAsync(string message)
+        private async Task<ChatMessageViewModel> AddChatMessageAsync(string message)
         {
             var userMessage = new ChatMessageViewModel 
             {
@@ -19,7 +19,6 @@ namespace CMS.Mcp.Client.Services
                 Role = ChatRole.User,
                 Timestamp = DateTime.UtcNow
             };
-            chatMessageStore.Add(userMessage);
 
             var assistantMessage = new ChatMessageViewModel 
             {
@@ -28,11 +27,35 @@ namespace CMS.Mcp.Client.Services
                 IsProcessing = true,
                 Timestamp = DateTime.UtcNow
             };
-            chatMessageStore.Add(assistantMessage);
+            
+            await chatMessageStore.AddAsync(userMessage);
+            await chatMessageStore.AddAsync(assistantMessage);
+
+            return assistantMessage;
+        }
+
+        public async Task<ChatMessageViewModel> SendMessageAsync(string message, string serverName)
+        {
+            var assistantMessage = await AddChatMessageAsync(message);
 
             try 
             {
-                logger.LogInformation($"Processing message: {message}");
+                if (string.IsNullOrEmpty(serverName))
+                {
+                    assistantMessage.Content = "No MCP server selected or available. Please check your configuration.";
+                    assistantMessage.IsProcessing = false;
+                    return assistantMessage;
+                }
+                
+                logger.LogInformation($"Processing message: {message} with server: {serverName}");
+                
+                var kernel = kernelFactory(serverName);
+                if (kernel == null)
+                {
+                    assistantMessage.Content = "Unable to find the McpServer configuration";
+                    assistantMessage.IsProcessing = false;
+                    return assistantMessage;
+                }
 
 #pragma warning disable SKEXP0001
                 var result = await kernel.InvokePromptAsync(message, new KernelArguments(new OpenAIPromptExecutionSettings
@@ -57,11 +80,10 @@ namespace CMS.Mcp.Client.Services
                 return assistantMessage;
             }
         }
-        
-        public Task ClearChatAsync()
+
+        public async Task ClearChatAsync()
         {
-            chatMessageStore.Clear();
-            return Task.CompletedTask;
+            await chatMessageStore.ClearAsync();
         }
     }
 }

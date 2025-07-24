@@ -73,7 +73,7 @@
         private static IServiceCollection AddServices(this IServiceCollection services)
         {
             return services
-                .AddTransient<IAiAssistantService, AiAssistantService>()
+                .AddSingleton<IAiAssistantService, AiAssistantService>()
                 .AddTransient<Func<string, IMcpToolService>>(sp => n => ActivatorUtilities.CreateInstance<McpToolService>(sp, n));
         }
 
@@ -187,43 +187,72 @@
 
         private static IServiceCollection AddSemanticKernel(this IServiceCollection services)
         {
-            return services.AddSingleton(sp =>
+            return services.AddSingleton<Func<string, Kernel>>(sp =>
             {
                 var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
                 var azureOpenAiChatOptions = sp.GetRequiredService<IOptions<AzureOpenAIChatOptions>>().Value;
+                var cache = new ConcurrentDictionary<string, Kernel>();
 
-                var deploymentName = azureOpenAiChatOptions.DeploymentName;
-                var endpoint = azureOpenAiChatOptions.Endpoint.ToString();
-                var apiKey = azureOpenAiChatOptions.ApiKey;
-                var httpClient = httpFactory.CreateClient(HttpClientInstances.AZURE_OPEN_AI_CHAT_HTTP_CLIENT_INSTANCE);
+                return serverName =>
+                {
+                    if (string.IsNullOrEmpty(serverName))
+                    {
+                        return null;
+                    }
 
-                return Kernel
-                    .CreateBuilder()
-                    .AddAzureOpenAIChatCompletion(deploymentName: deploymentName, endpoint: endpoint, apiKey: apiKey, httpClient: httpClient)
-                    .Build();
+                    if (cache.TryGetValue(serverName, out var kernel))
+                    {
+                        return kernel;
+                    }
+
+                    var deploymentName = azureOpenAiChatOptions.DeploymentName;
+                    var endpoint = azureOpenAiChatOptions.Endpoint.ToString();
+                    var apiKey = azureOpenAiChatOptions.ApiKey;
+                    var httpClient = httpFactory.CreateClient(HttpClientInstances.AZURE_OPEN_AI_CHAT_HTTP_CLIENT_INSTANCE);
+
+#pragma warning disable SKEXP0001
+                    kernel = Kernel
+                        .CreateBuilder()
+                        .AddAzureOpenAIChatCompletion(deploymentName: deploymentName, endpoint: endpoint, apiKey: apiKey, httpClient: httpClient)
+                        .Build();
+#pragma warning restore SKEXP0001
+
+                    cache[serverName] = kernel;
+
+                    return kernel;
+                };
             });
         }
 
         private static IServiceCollection AddMcp(this IServiceCollection services)
         {
             return services
-                .AddSingleton<Func<Uri, string, Task<IMcpClient>>>(sp =>
+                .AddSingleton<Func<McpServerConfig, Task<IMcpClient>>>(sp =>
                 {
-                    //TODO : Cache has to be cleared on logout or session expiration
+                    var sessionProvider = sp.GetRequiredService<ISessionProvider>();
                     var cache = new ConcurrentDictionary<string, IMcpClient>();
-                    return async (endpoint, name) =>
-                    {
-                        var key = string.Format($"{endpoint.ToString()}:::{name}");
-                        if (!cache.TryGetValue(key, out var existingClient))
-                        {
-                            var sessionProvider = sp.GetRequiredService<ISessionProvider>();
-                            var transport = new McpSseTransport(endpoint, name, sessionProvider);
 
-                            existingClient = await McpClientFactory.CreateAsync(transport);
-                            cache[key] = existingClient;
+                    return async c =>
+                    {
+                        if (c == null || string.IsNullOrEmpty(c.Name) || string.IsNullOrEmpty(c.BaseUrl))
+                        {
+                            return null;
                         }
 
-                        return existingClient;
+                        var endpoint = c.GetSseUri();
+                        var name = c.Name;
+                        var key = $"{endpoint}:::{name}";
+
+                        if (cache.TryGetValue(key, out var mcpClient))
+                        {
+                            return mcpClient;
+                        }
+
+                        var transport = new McpSseTransport(endpoint, name, sessionProvider);
+                        mcpClient = await McpClientFactory.CreateAsync(transport);
+                        cache[key] = mcpClient;
+
+                        return mcpClient;
                     };
                 });
         }

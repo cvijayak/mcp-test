@@ -6,5 +6,6 @@
     {
         public string ToolName { get; set; }
         public Dictionary<string, object> Parameters { get; set; }
+        public string ServerName { get; set; }
     }
 }

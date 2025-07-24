@@ -5,5 +5,6 @@
         public string AccessToken { get; init; }
         public string ApiBasePath { get; init; }
         public string McpClientBasePath { get; init; }
+        public string[] ServerOptions { get; init; }
     }
 }

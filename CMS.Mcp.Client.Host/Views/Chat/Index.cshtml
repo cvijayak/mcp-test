@@ -1,48 +1,31 @@
 @model CMS.Mcp.Client.Contracts.Models.TokenInfoViewModel
 @{
     ViewData["Title"] = "MCP Chat";
+    var serverOptions = Model.ServerOptions;
 }
 
 <div id="chat-app-container" class="chat-app-container">
     <div class="chat-app-row">
-        <!-- Sidebar -->
-        <div class="chat-sidebar" id="chatSidebar">
-            <div class="p-3 border-bottom">
-                <h5 class="mb-0 d-flex align-items-center">
-                    <i class="fas fa-robot me-2"></i> CMS AI Assistant 
-                </h5>
-            </div>
-            <div class="p-3">
-                <div class="d-grid gap-2">
-                    <button id="clearChatBtn" class="btn btn-outline-danger">
-                        <i class="fas fa-trash me-2"></i> Clear Conversation
-                    </button>
-                    <button id="getMcpToolsBtn" class="btn btn-outline-primary mt-2">
-                        <i class="fas fa-tools me-2"></i> MCP Tools
-                    </button>
-                </div>
-                
-                <hr>
-            </div>
-        </div>
-        
-        <!-- Sidebar toggle button -->
-        <button id="sidebarToggle" class="sidebar-toggle-btn">
-            <i class="fas fa-chevron-left" id="sidebarToggleIcon"></i>
-        </button>
-        
-        <!-- Main Chat Area -->
         <div class="chat-main">
-            <!-- Header -->
             <div class="chat-header d-flex justify-content-between align-items-center p-3 border-bottom">
-                <h4 class="mb-0"></h4>
-                <div id="mcpToolsContainer" class="d-none">
-                    <h5>MCP Tools</h5>
-                    <ul id="mcpToolsList" class="list-group"></ul>
+                <div class="d-flex align-items-center">
+                    <div class="app-logo d-flex align-items-center me-3">
+                        <i class="fas fa-robot fa-lg me-2"></i>
+                        <h5 class="mb-0 fw-bold">CMS AI Assistant</h5>
+                    </div>
+                    <!-- MCP Tools button moved to layout navigation -->
+                </div>
+                <div class="d-flex align-items-center">
+                    <button id="clearChatBtn" class="btn btn-link text-danger" title="Clear conversation">
+                        <i class="fas fa-trash fa-lg"></i>
+                    </button>
+                    <div id="mcpToolsContainer" class="d-none ms-3">
+                        <h5>MCP Tools</h5>
+                        <ul id="mcpToolsList" class="list-group"></ul>
+                    </div>
                 </div>
             </div>
             
-            <!-- Chat Container -->
             <div id="chatContainer" class="chat-container">
                 <div id="chatMessages" class="chat-messages"></div>
                 <div id="loadingIndicator" class="d-none text-center my-3">
@@ -52,8 +35,20 @@
                 </div>
             </div>
             
-            <!-- Chat Input -->
             <div class="chat-input-container">
+                <div class="row mb-2">
+                    <div class="col-md-12">
+                        <div class="d-flex align-items-center">
+                            <label for="serverSelect" class="me-2">Server:</label>
+                            <select id="serverSelect" class="form-select form-select-sm" style="max-width: 200px;">
+                                @foreach (var server in serverOptions)
+                                {
+                                    <option value="@server">@server</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
                 <div class="input-group">
                     <input type="text" id="messageInput" class="form-control" placeholder="Type your message..." />
                     <button id="sendMessageBtn" class="btn btn-primary px-4">
@@ -79,14 +74,38 @@
             overflow: hidden;
         }
         
+        /* Header buttons style */
+        #clearChatBtn, #getMcpToolsBtn {
+            font-size: 1.1rem;
+            padding: 5px;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            position: relative;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        
+        #clearChatBtn:hover {
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        
+        #getMcpToolsBtn:hover {
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        /* We're handling overflow in layout now, so removing this
         body {
             overflow-y: hidden;
-        }
+        }*/
 
         /* Main container styles */
         .chat-app-container {
-            position: fixed;
-            top: 66px; /* Height of the navbar - match with #header height */
+            position: absolute;
+            top: 0;
             bottom: 0;
             left: 0;
             right: 0;
@@ -94,6 +113,7 @@
             flex-direction: column;
             overflow: hidden;
             z-index: 1;
+            pointer-events: auto; /* Ensure clicks work properly */
         }
 
         /* Row layout */
@@ -104,88 +124,18 @@
             position: relative;
         }
 
-        /* Sidebar styles */
-        .chat-sidebar {
-            width: 250px;
-            min-width: 200px;
-            max-width: 400px;
-            background-color: white;
-            border-right: 1px solid var(--light-blue, #d0d7de);
-            box-shadow: 0 0 10px rgba(0,0,0,0.05);
-            flex-shrink: 0;
-            overflow-y: auto;
-            transition: all 0.3s ease;
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            left: 0;
-            z-index: 10;
-            resize: horizontal; /* Make the sidebar resizable */
+        /* App logo styles in header */
+        .app-logo {
+            padding: 5px 10px;
+            border-radius: 6px;
         }
         
-        /* Add a resize handle to make resizing more obvious */
-        .sidebar-resize-handle {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 5px;
-            height: 100%;
-            cursor: col-resize;
-            background-image: linear-gradient(to right, 
-                transparent 1px, 
-                rgba(0,0,0,0.1) 1px, 
-                transparent 2px);
-            background-size: 3px 100%;
-            background-repeat: repeat-x;
-            z-index: 11;
+        .app-logo .fa-robot {
+            color: var(--primary-blue);
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
         }
         
-        .sidebar-resize-handle:hover {
-            background-image: linear-gradient(to right, 
-                transparent 1px, 
-                rgba(32,64,102,0.2) 1px, 
-                transparent 2px);
-        }
-        
-        .chat-sidebar.collapsed {
-            transform: translateX(-100%);
-        }
-        
-        /* Sidebar toggle button */
-        .sidebar-toggle-btn {
-            position: absolute;
-            left: 250px; /* Default position, will be updated by JS when sidebar resizes */
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 20;
-            width: 24px;
-            height: 60px;
-            background-color: white;
-            border: 1px solid var(--light-blue, #d0d7de);
-            border-left: none;
-            border-top-right-radius: 4px;
-            border-bottom-right-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
-            transition: left 0.3s ease;
-        }
-        
-        .sidebar-toggle-btn:hover {
-            background-color: #f5f5f5;
-        }
-        
-        .sidebar-toggle-btn.collapsed {
-            left: 0;
-        }
-        
-        .sidebar-toggle-btn .fas {
-            transition: transform 0.3s ease;
-        }
-        
-        .sidebar-toggle-btn.collapsed .fas {
+        .fa-rotate-180 {
             transform: rotate(180deg);
         }
 
@@ -194,18 +144,14 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+            width: 100%;
             overflow: hidden;
             position: absolute;
             top: 0;
             right: 0;
             bottom: 0;
-            left: 250px; /* Default sidebar width */
-            transition: left 0.3s ease;
-        }
-        
-        /* When sidebar is collapsed or resized, adjust the chat window */
-        .chat-main.expanded {
-            left: 0; /* When sidebar is collapsed */
+            left: 0;
+            pointer-events: auto; /* Ensure clicks are captured correctly */
         }
 
         /* Header styles */
@@ -214,6 +160,8 @@
             background-color: var(--white, #ffffff);
             border-bottom: 1px solid var(--light-blue, #d0d7de);
             z-index: 1;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 10px 15px;
         }
 
         /* Chat container styles */
@@ -226,6 +174,7 @@
             background-color: white;
             box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
             margin: 10px 10px 0 10px;
+            pointer-events: auto; /* Ensure clicks work properly */
         }
 
         /* Chat input container */
@@ -529,15 +478,6 @@
     </style>
 }
 
-<!-- Image Viewer Modal -->
-<div id="imageViewerModal" class="image-viewer-modal">
-    <div class="image-viewer-container">
-        <img id="imageViewerImg" class="image-viewer-img" src="" alt="Full size image">
-        <button id="imageViewerClose" class="image-viewer-close" aria-label="Close image viewer">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-</div>
 
 @section Scripts {
     <script>
@@ -546,18 +486,26 @@
         const sendMessageBtn = document.getElementById('sendMessageBtn');
         const clearChatBtn = document.getElementById('clearChatBtn');
         const loadingIndicator = document.getElementById('loadingIndicator');
-        const getMcpToolsBtn = document.getElementById('getMcpToolsBtn');
+        // getMcpToolsBtn removed - now in layout
         const mcpToolsContainer = document.getElementById('mcpToolsContainer');
         const mcpToolsList = document.getElementById('mcpToolsList');
 
         let messages = [];
+        let currentServerName = '';
 
         document.addEventListener('DOMContentLoaded', () => {
             loadingIndicator.classList.add('d-none');
             messageInput.focus();
             fetchMessages();
-            initSidebarToggle();
             initImageViewer();
+            fetchMcpServers();
+            
+            // Add server select change event listener
+            const serverSelect = document.getElementById('serverSelect');
+            serverSelect.addEventListener('change', () => {
+                currentServerName = serverSelect.value;
+                console.log("Server changed to:", currentServerName);
+            });
             
             sendMessageBtn.addEventListener('click', sendMessage);
             messageInput.addEventListener('keydown', (e) => {
@@ -569,19 +517,102 @@
             
             clearChatBtn.addEventListener('click', (e) => {
                 e.preventDefault();
+                e.stopPropagation(); // Ensure event doesn't propagate to parent elements
                 if (confirm('Are you sure you want to clear the chat history?')) {
                     clearChat();
                 }
             });
-            getMcpToolsBtn.addEventListener('click', () => {
-                window.location.href = '@Url.Action("GetMcpTools", "Chat")';
-            });
+            // getMcpToolsBtn event listener removed - now handled in _Layout.cshtml
         });
+        
+        function fetchMcpServers() {
+            console.log('Fetching MCP servers...');
+            // Check if we already have server options from the model
+            const serverSelect = document.getElementById('serverSelect');
+            if (serverSelect.options.length > 0) {
+                console.log(`Already have ${serverSelect.options.length} server options from the model`);
+                // Store the first server as current
+                if (serverSelect.options.length > 0) {
+                    currentServerName = serverSelect.options[0].value;
+                    console.log(`Set current server to: ${currentServerName}`);
+                }
+                return; // Already have options from model, no need to fetch
+            }
+            
+            fetch('@Url.Action("GetMcpServers", "Chat")')
+                .then(response => {
+                    console.log('Server response status:', response.status);
+                    if (!response.ok) {
+                        console.error('Server response not OK:', response.status, response.statusText);
+                        throw new Error('Failed to fetch MCP servers');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Received MCP servers data:', data);
+                    
+                    // Only clear if we're actually populating with new data
+                    if (Array.isArray(data) && data.length > 0) {
+                        serverSelect.innerHTML = '';
+                        console.log(`Adding ${data.length} server options`);
+                        // Populate server options
+                        data.forEach((server, index) => {
+                            console.log(`Adding server option: ${server}`);
+                            const option = document.createElement('option');
+                            option.value = server;
+                            option.textContent = server;
+                            if (index === 0) {
+                                option.selected = true;
+                                currentServerName = server;
+                            }
+                            serverSelect.appendChild(option);
+                        });
+                        
+                        // Update current server to the first one in the list
+                        currentServerName = data[0];
+                        console.log("Selected MCP server:", currentServerName);
+                        
+                        // Enable send button if a server is available
+                        document.getElementById('sendMessageBtn').disabled = false;
+                    } else {
+                        console.warn('No MCP servers returned from API');
+                        // Add a default "No servers available" option
+                        const option = document.createElement('option');
+                        option.value = "";
+                        option.textContent = "No MCP servers available";
+                        option.disabled = true;
+                        option.selected = true;
+                        serverSelect.appendChild(option);
+                        document.getElementById('sendMessageBtn').disabled = true;
+                        
+                        // Disable send button if no servers available
+                        document.getElementById('sendMessageBtn').disabled = true;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching MCP servers:', error);
+                    // Show error option
+                    const serverSelect = document.getElementById('serverSelect');
+                    serverSelect.innerHTML = '';
+                    
+                    const option = document.createElement('option');
+                    option.textContent = "Error loading servers";
+                    option.disabled = true;
+                    serverSelect.appendChild(option);
+                    
+                    // Disable send button on error
+                    document.getElementById('sendMessageBtn').disabled = true;
+                });
+        }
 
         function fetchMcpTools() {
             mcpToolsContainer.classList.remove('d-none');
             mcpToolsList.innerHTML = '<li class="list-group-item">Loading...</li>';
-            fetch('@Url.Action("GetMcpTools", "Chat")')
+            
+            // Get the selected server name
+            const serverName = currentServerName || document.getElementById('serverSelect').value;
+            
+            fetch(`@Url.Action("GetMcpTools", "Chat")?serverName=${encodeURIComponent(serverName)}`)
                 .then(response => {
                     if (!response.ok) throw new Error('Failed to fetch MCP tools');
                     return response.json();
@@ -626,6 +657,9 @@
             // Disable the send button and show progress indicator
             toggleSendButtonLoading(true);
             
+            // Get the selected server name
+            const serverName = currentServerName || document.getElementById('serverSelect').value;
+            
             const userMessage = {
                 role: 0,
                 content: content,
@@ -649,7 +683,7 @@
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 credentials: 'include',
-                body: `message=${encodeURIComponent(content)}`
+                body: `message=${encodeURIComponent(content)}&serverName=${encodeURIComponent(serverName)}`
             })
             .then(response => {
                 if (!response.ok) {
@@ -679,10 +713,12 @@
         }
 
         function clearChat() {
+            console.log('Clearing chat history...');
             fetch('@Url.Action("ClearChat", "Chat")', {
                 method: 'POST'
             })
             .then(() => {
+                console.log('Chat history cleared successfully');
                 messages = [];
                 renderMessages();
             })
@@ -882,128 +918,16 @@
             }
         }
         
-        // Sidebar toggle functionality
-        function initSidebarToggle() {
-            const sidebar = document.getElementById('chatSidebar');
-            const toggleBtn = document.getElementById('sidebarToggle');
-            const toggleIcon = document.getElementById('sidebarToggleIcon');
-            const chatMain = document.querySelector('.chat-main');
-            
-            // Check if sidebar was collapsed previously
-            const isSidebarCollapsed = localStorage.getItem('chatSidebarCollapsed') === 'true';
-            
-            // Get saved sidebar width if any
-            const savedSidebarWidth = localStorage.getItem('chatSidebarWidth');
-            
-            // Initialize sidebar state based on saved preferences
-            if (isSidebarCollapsed) {
-                sidebar.classList.add('collapsed');
-                toggleBtn.classList.add('collapsed');
-                // Adjust chat window width on initial load if sidebar is collapsed
-                adjustChatWidth(true);
-            } else {
-                // Restore sidebar width if saved
-                if (savedSidebarWidth) {
-                    sidebar.style.width = `${savedSidebarWidth}px`;
-                    
-                    // Adjust chat main position accordingly
-                    chatMain.style.left = `${savedSidebarWidth}px`;
-                } else {
-                    // Default width
-                    chatMain.style.left = '250px';
-                }
-                
-                // Initialize toggle button position based on sidebar width
-                toggleBtn.style.left = `${sidebar.offsetWidth}px`;
-            }
-            
-            // Function to adjust chat window width based on sidebar state
-            function adjustChatWidth(isCollapsed) {
-                if (isCollapsed) {
-                    // When sidebar is collapsed, add a class to expand the chat window
-                    chatMain.classList.add('expanded');
-                    // Reset inline left position
-                    chatMain.style.left = '0';
-                } else {
-                    // When sidebar is visible, set the left position based on actual sidebar width
-                    const sidebarWidth = sidebar.offsetWidth;
-                    
-                    // Remove the expanded class first
-                    chatMain.classList.remove('expanded');
-                    
-                    // Set the left position of the chat main to match sidebar width
-                    chatMain.style.left = `${sidebarWidth}px`;
-                }
-            }
-            
-            // Toggle sidebar when button is clicked
-            toggleBtn.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-                toggleBtn.classList.toggle('collapsed');
-                
-                // Save state to localStorage
-                const isCollapsed = sidebar.classList.contains('collapsed');
-                localStorage.setItem('chatSidebarCollapsed', isCollapsed);
-                
-                // Adjust chat window width when sidebar is toggled
-                adjustChatWidth(isCollapsed);
-                
-                // Update toggle button position
-                if (isCollapsed) {
-                    toggleBtn.style.left = '0';
-                } else {
-                    // Give a small delay for the animation to complete
-                    setTimeout(() => {
-                        const sidebarRect = sidebar.getBoundingClientRect();
-                        toggleBtn.style.left = `${sidebarRect.width}px`;
-                    }, 50);
-                }
-            });
-            
-            // Also observe sidebar width changes that might come from resizing
-            const resizeObserver = new ResizeObserver((entries) => {
-                const isCollapsed = sidebar.classList.contains('collapsed');
-                
-                if (!isCollapsed) {
-                    // Get current sidebar width from ResizeObserver
-                    const sidebarEntry = entries[0];
-                    const sidebarWidth = sidebarEntry.contentRect.width;
-                    
-                    // Save sidebar width preference
-                    if (sidebarWidth > 0) {
-                        localStorage.setItem('chatSidebarWidth', sidebarWidth);
-                    }
-                    
-                    // Update the chat main left position to match sidebar width
-                    chatMain.style.left = `${sidebarWidth}px`;
-                }
-                
-                // Make sure toggle button position matches sidebar width
-                // If sidebar is collapsed, position at 0, otherwise at the edge of sidebar width
-                if (isCollapsed) {
-                    toggleBtn.style.left = '0';
-                } else {
-                    // Calculate the precise position based on the sidebar width
-                    const sidebarRect = sidebar.getBoundingClientRect();
-                    toggleBtn.style.left = `${sidebarRect.width}px`;
-                }
-            });
-            
-            resizeObserver.observe(sidebar);
-            
-            // Add double-click to resize handle to reset sidebar width
-            const resizeHandle = document.createElement('div');
-            resizeHandle.className = 'sidebar-resize-handle';
-            resizeHandle.title = 'Double-click to reset width';
-            sidebar.appendChild(resizeHandle);
-            
-            resizeHandle.addEventListener('dblclick', () => {
-                // Reset sidebar to default width
-                sidebar.style.width = '250px';
-                localStorage.setItem('chatSidebarWidth', '250');
-                chatMain.style.left = '250px';
-                toggleBtn.style.left = '250px';
-            });
-        }
+        // Header styling functionality - placeholder for any future header-specific functions
     </script>
 }
+
+<!-- Image viewer modal -->
+<div id="imageViewerModal" class="image-viewer-modal">
+    <div class="image-viewer-container">
+        <button id="imageViewerClose" class="image-viewer-close btn btn-link text-white">
+            <i class="fas fa-times"></i>
+        </button>
+        <img id="imageViewerImg" class="image-viewer-img" alt="Full size image" />
+    </div>
+</div>

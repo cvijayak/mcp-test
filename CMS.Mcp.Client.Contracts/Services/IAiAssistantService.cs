@@ -5,7 +5,7 @@ namespace CMS.Mcp.Client.Contracts.Services
 
     public interface IAiAssistantService
     {
-        Task<ChatMessageViewModel> SendMessageAsync(string message);
+        Task<ChatMessageViewModel> SendMessageAsync(string message, string serverName);
         Task ClearChatAsync();
     }
 }

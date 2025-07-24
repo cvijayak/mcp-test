@@ -15,14 +15,14 @@ namespace CMS.Mcp.Client.Services
     using NJsonSchema;
     using Shared.Common.Extensions;
 
-    public class McpToolService(string serverName, Func<Uri, string, Task<IMcpClient>> mcpClient, Kernel kernel, IOptions<ServerOptions> serverOptions) : IMcpToolService
+    public class McpToolService(string serverName, Func<McpServerConfig, Task<IMcpClient>> mcpClientFactory, Func<string, Kernel> kernelFactory, IOptions<ServerOptions> serverOptions) : IMcpToolService
     {
         private readonly ServerOptions _serverOptions = serverOptions.Value;
 
         private async Task<IMcpClient> GetMcpClient()
         {
             var mcpServer = _serverOptions.McpServers?.FirstOrDefault(d => d.Name == serverName);
-            return mcpServer == null ? null : await mcpClient(mcpServer.GetSseUri(), serverName);
+            return mcpServer == null ? null : await mcpClientFactory(mcpServer);
         }
 
         public async Task<McpToolViewModel[]> GetToolsAsync()
@@ -74,7 +74,13 @@ namespace CMS.Mcp.Client.Services
         public async Task RegisterToolsAsync()
         {
             var client = await GetMcpClient();
-            if (client != null && !kernel.Plugins.Contains(serverName))
+            if (client == null)
+            {
+                return;
+            } 
+
+            var kernel = kernelFactory(serverName);
+            if (kernel != null && !kernel.Plugins.Contains(serverName))
             {
                 var tools = await client.ListToolsAsync();
 #pragma warning disable SKEXP0001

@@ -2,28 +2,112 @@
 @{
     ViewData["Title"] = "MCP Tools";
 }
-<div class="container py-5">
-    <div class="row mb-4 align-items-center">
-        <div class="col">
-            <h2 class="display-5 fw-bold mb-2">
-                <i class="fas fa-tools text-primary me-2"></i> MCP Tools
-            </h2>
-            <p class="lead text-muted">Browse and execute available MCP tools below.</p>
+
+<style>
+    /* MCP Tools styling to match chat window */
+    .mcp-tools-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    
+    .tools-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .tools-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+    }
+    
+    .tools-list {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .tool-item {
+        background-color: #ffffff;
+        transition: all 0.2s ease;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .tool-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        border-color: #c8d6e5;
+    }
+    
+    .param-collapse-toggle {
+        font-size: 0.85rem;
+        padding: 5px 12px;
+    }
+    
+    .tool-parameters {
+        margin-top: 10px;
+    }
+    
+    .parameter-field {
+        padding: 8px;
+        border-radius: 5px;
+        background-color: rgba(0, 0, 0, 0.02);
+        margin-bottom: 10px;
+    }
+</style>
+<div class="mcp-tools-container">
+    <div class="tools-header d-flex justify-content-between align-items-center p-3 border-bottom">
+        <div class="d-flex align-items-center">
+            <div class="app-logo d-flex align-items-center me-3">
+                <i class="fas fa-tools fa-lg me-2 text-primary"></i>
+                <h5 class="mb-0 fw-bold">MCP Tools</h5>
+            </div>
         </div>
-        <div class="col-auto text-end">
-            <a href="@Url.Action("Index", "Chat")" class="btn btn-lg btn-outline-secondary mt-2">
+        <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center me-3">
+                <label for="serverSelect" class="me-2 mb-0">Server:</label>
+                <select id="serverSelect" class="form-select form-select-sm" style="width: 200px;">
+                    @foreach (var server in ViewBag.ServerOptions)
+                    {
+                        if (server == ViewBag.SelectedServer)
+                        {
+                            <option value="@server" selected="selected">@server</option>
+                        }
+                        else
+                        {
+                            <option value="@server">@server</option>
+                        }
+                    }
+                </select>
+            </div>
+            <a href="@Url.Action("Index", "Chat")" class="btn btn-outline-primary">
                 <i class="fas fa-arrow-left me-2"></i> Back to Chat
             </a>
         </div>
     </div>
-    <div class="row">
+    
+    <div class="tools-content p-3">
+        @if (TempData["ToolResult"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+                <strong>Tool Result:</strong> @TempData["ToolResult"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+        
         @if (Model != null && Model.Any())
         {
-            <div class="col-12">
-                <div class="list-group">
+            <div class="tools-list">
                     @foreach (var tool in Model)
                     {
-                        <div class="list-group-item list-group-item-action tool-item mb-3 border rounded shadow-sm">
+                        <div class="list-group-item list-group-item-action tool-item mb-3 rounded">
                             <div class="d-flex w-100 justify-content-between align-items-center">
                                 <div>
                                     <div class="d-flex align-items-center mb-2">
@@ -41,8 +125,9 @@
                                     </button>
                                 }
                             </div>
-                            <form method="post" asp-action="ExecuteTool" asp-controller="Chat" asp-route-toolName="@tool.Name" class="mt-2 tool-form">
+                            <form class="mt-2 tool-form">
                                 <input type="hidden" name="toolName" value="@tool.Name" />
+                                <input type="hidden" name="serverName" value="@ViewBag.SelectedServer" />
                                 
                                 @if (tool.Parameters != null && tool.Parameters.Length > 0)
                                 {
@@ -64,43 +149,39 @@
                                                     {
                                                         <div class="form-check form-switch">
                                                             <input class="form-check-input param-value" type="checkbox" id="param-@(tool.Name)-@param.Name" 
-                                                                data-param-name="@param.Name" data-param-type="@param.Type">
+                                                                name="@param.Name" data-param-name="@param.Name" data-param-type="@param.Type">
                                                             <label class="form-check-label" for="param-@(tool.Name)-@param.Name">Enable</label>
                                                         </div>
                                                     }
                                                     else if (param.Type.Equals("Array", StringComparison.OrdinalIgnoreCase))
                                                     {
                                                         <textarea class="form-control param-value" rows="3" placeholder="Enter JSON array"
-                                                                data-param-name="@param.Name" data-param-type="@param.Type"></textarea>
+                                                                name="@param.Name" data-param-name="@param.Name" data-param-type="@param.Type"></textarea>
                                                     }
                                                     else if (param.Type.Equals("Object", StringComparison.OrdinalIgnoreCase))
                                                     {
                                                         <textarea class="form-control param-value" rows="3" placeholder="Enter JSON object"
-                                                                data-param-name="@param.Name" data-param-type="@param.Type"></textarea>
+                                                                name="@param.Name" data-param-name="@param.Name" data-param-type="@param.Type"></textarea>
                                                     }
                                                     else if (param.Type.Equals("Integer", StringComparison.OrdinalIgnoreCase) || 
                                                             param.Type.Equals("Number", StringComparison.OrdinalIgnoreCase))
                                                     {
                                                         <input type="number" class="form-control param-value" 
                                                             placeholder="Enter a number"
-                                                            data-param-name="@param.Name" data-param-type="@param.Type" />
+                                                            name="@param.Name" data-param-name="@param.Name" data-param-type="@param.Type" />
                                                     }
                                                     else
                                                     {
                                                         <input type="text" class="form-control param-value" 
                                                             placeholder="Enter value"
-                                                            data-param-name="@param.Name" data-param-type="@param.Type" />
+                                                            name="@param.Name" data-param-name="@param.Name" data-param-type="@param.Type" />
                                                     }
                                                 </div>
                                             }
                                         </div>
                                     </div>
                                 }
-                                else
-                                {
-                                    <!-- Tools without parameters don't need any input fields -->
-                                }
-                                <button type="submit" class="btn btn-success w-100 execute-btn">
+                                <button type="button" class="btn btn-success w-100 execute-btn">
                                     <span class="btn-text"><i class="fas fa-play me-2"></i> Execute</span>
                                     <span class="btn-loading d-none">
                                         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -108,28 +189,24 @@
                                     </span>
                                 </button>
                             </form>
-                            <div class="tool-result mt-3 p-2 bg-white border rounded shadow-sm" style="min-height:2rem;"></div>
                         </div>
                     }
                 </div>
-            </div>
-        }
+            }
         else
         {
-            <div class="col-12">
-                <div class="alert alert-warning text-center">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    No tools available. Please check your configuration or contact support.
+            <div class="tools-list">
+                <div class="text-center py-4">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>No tools available.</strong> Please check your configuration or contact support.
+                    </div>
                 </div>
             </div>
         }
     </div>
-    <div class="row mt-5">
-        <!-- Back to Chat button moved to top right -->
-    </div>
 </div>
 
-<!-- Modal for tool result -->
 <div class="modal fade" id="toolResultModal" tabindex="-1" aria-labelledby="toolResultModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
@@ -172,16 +249,24 @@
 </div>
 
 <script>
+// JavaScript code for the MCP Tools page
 document.addEventListener('DOMContentLoaded', function() {
-    // Set up parameter toggle buttons to rotate icons
+    const serverSelect = document.getElementById('serverSelect');
+    if (serverSelect) {
+        serverSelect.addEventListener('change', function() {
+            const selectedServer = this.value;
+            window.location.href = '@Url.Action("GetMcpTools", "Chat")' + '?serverName=' + encodeURIComponent(selectedServer);
+        });
+    }
+    
+    // No inline result containers, so no clear buttons
+    
     document.querySelectorAll('.param-collapse-toggle').forEach(button => {
         button.addEventListener('click', function() {
             const icon = this.querySelector('.toggle-icon');
             icon.classList.toggle('fa-rotate-180');
         });
     });
-
-    // Set up the view toggle buttons
     document.getElementById('jsonViewBtn').addEventListener('click', function() {
         setActiveView('jsonView');
     });
@@ -194,27 +279,21 @@ document.addEventListener('DOMContentLoaded', function() {
         setActiveView('tableView');
     });
     
-    // Set tree view as the default view
     document.getElementById('treeViewBtn').classList.add('active');
     document.getElementById('jsonViewBtn').classList.remove('active');
     
     document.querySelectorAll('.tool-form').forEach(function(form) {
-        // First check if form has parameters that need validation
         const hasParameters = form.querySelector('.tool-parameters') !== null;
         const executeBtn = form.querySelector('.execute-btn');
         
-        // If there are parameters, check on page load if they're filled
         if (hasParameters) {
-            // Disable execute button by default for forms with parameters
             executeBtn.disabled = true;
             
-            // Add input event listeners to all parameter fields
             form.querySelectorAll('.param-value').forEach(function(input) {
                 input.addEventListener('input', function() {
                     validateFormParameters(form);
                 });
                 
-                // For checkboxes, listen for change instead of input
                 if (input.type === 'checkbox') {
                     input.addEventListener('change', function() {
                         validateFormParameters(form);
@@ -222,19 +301,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
-            // Initial validation
             validateFormParameters(form);
         }
         
+        // Add click event to the execute button
+        executeBtn.addEventListener('click', function() {
+            form.dispatchEvent(new Event('submit'));
+        });
+        
         form.addEventListener('submit', function(e) {
-            e.preventDefault();
+            e.preventDefault(); // Prevent the default form submission
             
-            // Get the execute button and loading elements
+            // Instead of using ExecuteToolForm controller action, we'll use ExecuteTool API directly
             const executeBtn = form.querySelector('.execute-btn');
             const btnText = executeBtn.querySelector('.btn-text');
             const btnLoading = executeBtn.querySelector('.btn-loading');
             
-            // Disable the button and show loading state
             executeBtn.disabled = true;
             btnText.classList.add('d-none');
             btnLoading.classList.remove('d-none');
@@ -243,14 +325,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const paramDict = {};
             let hasError = false;
             let hasParams = false;
-            
-            // Handle tool-parameters (from McpToolParameter objects)
             form.querySelectorAll('.tool-parameters .param-value').forEach(function(input) {
                 const key = input.dataset.paramName;
                 const paramType = input.dataset.paramType;
                 let value;
                 
-                // Extract value based on input type
                 if (paramType.toLowerCase() === 'boolean') {
                     value = input.checked;
                     hasParams = true;
@@ -265,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         } catch (e) {
                             input.classList.add('is-invalid');
                             hasError = true;
-                            value = input.value; // Keep as string if JSON parse fails
+                            value = input.value;
                         }
                     } else {
                         value = input.value;
@@ -277,18 +356,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
-            // Handle manual parameter inputs (for tools without defined parameters)
             form.querySelectorAll('.input-group').forEach(function(row) {
                 const key = row.querySelector('.param-key')?.value;
                 const valueStr = row.querySelector('.param-value')?.value;
                 if (key) {
                     hasParams = true;
                     let parsedValue;
-                    // Try to parse as JSON, fallback to string or number
                     try {
                         parsedValue = JSON.parse(valueStr);
                     } catch {
-                        // If not valid JSON, treat as number if possible, else string
                         if (!isNaN(valueStr) && valueStr.trim() !== "") {
                             parsedValue = Number(valueStr);
                         } else {
@@ -299,8 +375,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     row.querySelector('.param-value').classList.remove('is-invalid');
                 }
             });
-            
-            // Don't submit if there are errors in JSON inputs
             if (hasError) {
                 alert("Please fix the invalid JSON in parameters");
                 executeBtn.disabled = false;
@@ -308,82 +382,78 @@ document.addEventListener('DOMContentLoaded', function() {
                 btnLoading.classList.add('d-none');
                 return;
             }
-            // Send as JSON
+            
+            // Using ExecuteTool API directly instead of ExecuteToolForm
+            const requestData = { 
+                toolName: toolName, 
+                serverName: form.querySelector('input[name="serverName"]').value, 
+                parameters: hasParams ? paramDict : {} 
+            };
+            
+            console.log('Executing tool:', requestData);
+            
             fetch('/mcp/chat/ExecuteTool', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ toolName: toolName, parameters: hasParams ? paramDict : {} })
+                body: JSON.stringify(requestData)
             })
             .then(async response => {
+                // Check if response is successful
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${response.statusText}`);
+                }
+                
                 const contentType = response.headers.get('content-type');
                 let resultText = '';
                 let resultJson = null;
                 
                 if (contentType && contentType.indexOf('application/json') !== -1) {
-                    // JSON response
                     resultJson = await response.json();
                     resultText = JSON.stringify(resultJson, null, 2);
                 } else if (contentType && contentType.indexOf('text/html') !== -1) {
-                    // HTML response (error: backend returned a view)
                     resultText = "Error: The server returned an HTML page instead of JSON. Please contact support or check the backend controller.";
                 } else {
-                    // Other content type
                     resultText = await response.text();
                     try {
-                        // Try to parse as JSON even if content type is not specified correctly
                         resultJson = JSON.parse(resultText);
                     } catch (e) {
-                        // Not JSON, continue with text
                     }
                 }
                 
-                // Display the result in JSON view
+                // Only update modal content, don't show in the tool result container
                 document.getElementById('toolResultContent').textContent = resultText;
                 
-                // Set up other views if we have JSON data
                 if (resultJson) {
-                    // Set up tree view
                     setupTreeView(resultJson);
                     
-                    // Set up table view if data is suitable
                     setupTableView(resultJson);
                     
-                    // Look for image URLs
                     findAndDisplayImages(resultJson);
                 }
                 
-                // Reset view buttons
                 document.querySelectorAll('.view-options .btn').forEach(btn => {
                     btn.classList.remove('active');
                 });
                 document.getElementById('treeViewBtn').classList.add('active');
                 
-                // Show tree view by default, hide others
                 document.getElementById('jsonView').classList.add('d-none');
                 document.getElementById('treeView').classList.remove('d-none');
                 document.getElementById('tableView').classList.add('d-none');
                 
-                // Make sure the tree view works correctly by refreshing it
                 setTimeout(() => {
-                    // Re-initialize all the tree view nodes
                     document.querySelectorAll('.json-tree-key').forEach(keyElement => {
-                        // First remove any existing click handlers to avoid duplicates
                         const newKeyElement = keyElement.cloneNode(true);
                         keyElement.parentNode.replaceChild(newKeyElement, keyElement);
                         
-                        // Add click listener again to ensure it works
                         newKeyElement.addEventListener('click', function(e) {
-                            e.stopPropagation(); // Prevent event bubbling
+                            e.stopPropagation();
                             
-                            // Find the parent node container
                             const nodeContainer = this.closest('.json-tree-node');
                             if (nodeContainer) {
-                                // Find the content element to toggle
                                 const contentElement = nodeContainer.querySelector('.json-tree-content');
                                 if (contentElement) {
-                                    // Toggle collapsed class
                                     contentElement.classList.toggle('collapsed');
                                     this.classList.toggle('collapsed');
                                 }
@@ -392,26 +462,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }, 100);
                 
-                // Show the modal
                 const modal = new bootstrap.Modal(document.getElementById('toolResultModal'));
                 modal.show();
-                
-                // Re-enable the button
                 executeBtn.disabled = false;
                 btnText.classList.remove('d-none');
                 btnLoading.classList.add('d-none');
             })
             .catch(error => {
-                document.getElementById('toolResultContent').textContent = "Error executing tool: " + error;
+                const errorMessage = "Error executing tool: " + error;
                 
-                // Reset views for error case
-                // For error cases, we'll stick with JSON view as it's more reliable for showing error messages
+                // Only update modal content, don't show in the tool result container
+                document.getElementById('toolResultContent').textContent = errorMessage;
                 document.getElementById('jsonView').classList.remove('d-none');
                 document.getElementById('treeView').classList.add('d-none');
                 document.getElementById('tableView').classList.add('d-none');
                 document.getElementById('imagesContainer').classList.add('d-none');
-                
-                // Reset view buttons
                 document.querySelectorAll('.view-options .btn').forEach(btn => {
                     btn.classList.remove('active');
                 });
@@ -420,8 +485,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const modal = new bootstrap.Modal(document.getElementById('toolResultModal'));
                 modal.show();
                 console.error(error);
-                
-                // Re-enable the button on error
                 executeBtn.disabled = false;
                 btnText.classList.remove('d-none');
                 btnLoading.classList.add('d-none');
@@ -430,32 +493,23 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Function to set the active view
 function setActiveView(viewId) {
-    // Hide all views
     document.getElementById('jsonView').classList.add('d-none');
     document.getElementById('treeView').classList.add('d-none');
     document.getElementById('tableView').classList.add('d-none');
     
-    // Show the selected view
     document.getElementById(viewId).classList.remove('d-none');
-    
-    // Update the active button
     document.querySelectorAll('.view-options .btn').forEach(btn => {
         btn.classList.remove('active');
     });
     
-    // Set active class on the clicked button
     let btnId = viewId + 'Btn';
     document.getElementById(btnId).classList.add('active');
 }
-
-// Function to set up the tree view visualization
 function setupTreeView(data) {
     const container = document.getElementById('jsonTree');
     container.innerHTML = '';
     
-    // Add controls for expand/collapse all
     const controls = document.createElement('div');
     controls.className = 'json-tree-controls';
     
@@ -479,7 +533,6 @@ function setupTreeView(data) {
     collapseAllBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        // Only collapse nodes that have children (objects and arrays)
         container.querySelectorAll('.json-tree-node > .json-tree-key').forEach(key => {
             const content = key.nextElementSibling;
             if (content && content.classList.contains('json-tree-content')) {
@@ -493,7 +546,6 @@ function setupTreeView(data) {
     controls.appendChild(collapseAllBtn);
     container.appendChild(controls);
     
-    // Create the tree structure
     const rootElement = document.createElement('div');
     rootElement.className = 'json-tree-root';
     container.appendChild(rootElement);
@@ -503,27 +555,20 @@ function setupTreeView(data) {
     } else if (typeof data === 'object' && data !== null) {
         createObjectNode(rootElement, data, 'root');
     } else {
-        // Simple value
         rootElement.textContent = JSON.stringify(data);
     }
     
-    // Set up click handlers for all tree nodes
     container.querySelectorAll('.json-tree-key').forEach(keyElement => {
-        // First remove any existing click handlers to avoid duplicates
         const newKeyElement = keyElement.cloneNode(true);
         keyElement.parentNode.replaceChild(newKeyElement, keyElement);
         
-        // Add the click event listener
         newKeyElement.addEventListener('click', function(e) {
-            e.stopPropagation(); // Prevent event bubbling
+            e.stopPropagation();
             
-            // Find the parent node container
             const nodeContainer = this.closest('.json-tree-node');
             if (nodeContainer) {
-                // Find the content element to toggle
                 const contentElement = nodeContainer.querySelector('.json-tree-content');
                 if (contentElement) {
-                    // Toggle collapsed class
                     contentElement.classList.toggle('collapsed');
                     this.classList.toggle('collapsed');
                 }
@@ -531,13 +576,10 @@ function setupTreeView(data) {
         });
     });
     
-    // Ensure all nodes are expanded by default
     container.querySelectorAll('.json-tree-content').forEach(content => {
         content.classList.remove('collapsed');
     });
 }
-
-// Function to create an object node in tree view
 function createObjectNode(parentElement, obj, key) {
     const nodeContainer = document.createElement('div');
     nodeContainer.className = 'json-tree-node';
@@ -553,7 +595,6 @@ function createObjectNode(parentElement, obj, key) {
     nodeContainer.appendChild(keyElement);
     nodeContainer.appendChild(contentElement);
     
-    // Get and sort object keys for better readability
     const entries = Object.entries(obj).sort((a, b) => a[0].localeCompare(b[0]));
     
     for (const [k, v] of entries) {
@@ -562,11 +603,8 @@ function createObjectNode(parentElement, obj, key) {
         } else if (typeof v === 'object' && v !== null) {
             createObjectNode(contentElement, v, k);
         } else {
-            // Simple value
             const valueContainer = document.createElement('div');
             valueContainer.className = 'json-tree-leaf';
-            
-            // Add proper value class based on type
             const valueType = typeof v;
             let valueClass = 'json-tree-value';
             if (valueType === 'string') valueClass += ' string';
@@ -593,14 +631,12 @@ function createObjectNode(parentElement, obj, key) {
     contentElement.appendChild(closeBrace);
 }
 
-// Function to create an array node in tree view
 function createArrayNode(parentElement, arr, key) {
     const nodeContainer = document.createElement('div');
     nodeContainer.className = 'json-tree-node';
     
     const keyElement = document.createElement('span');
     keyElement.className = 'json-tree-key';
-    // Add array length for better context
     keyElement.textContent = `${key}: [ // ${arr.length} items`;
     
     const contentElement = document.createElement('div');
@@ -616,11 +652,8 @@ function createArrayNode(parentElement, arr, key) {
         } else if (typeof item === 'object' && item !== null) {
             createObjectNode(contentElement, item, index);
         } else {
-            // Simple value
             const valueContainer = document.createElement('div');
             valueContainer.className = 'json-tree-leaf';
-            
-            // Add proper value class based on type
             const valueType = typeof item;
             let valueClass = 'json-tree-value';
             if (valueType === 'string') valueClass += ' string';
@@ -647,7 +680,6 @@ function createArrayNode(parentElement, arr, key) {
     contentElement.appendChild(closeBracket);
 }
 
-// Format values for display
 function formatValue(value) {
     if (typeof value === 'string') {
         return `"${escapeHtml(value)}"`;
@@ -660,7 +692,6 @@ function formatValue(value) {
     }
 }
 
-// Escape HTML for safe display
 function escapeHtml(str) {
     return str
         .replace(/&/g, '&amp;')
@@ -670,7 +701,6 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
-// Function to set up table view
 function setupTableView(data) {
     const tableHead = document.getElementById('jsonTableHead');
     const tableBody = document.getElementById('jsonTableBody');
@@ -678,12 +708,9 @@ function setupTableView(data) {
     tableHead.innerHTML = '';
     tableBody.innerHTML = '';
     
-    // Hide table view button if data is not suitable for table view
     const tableViewBtn = document.getElementById('tableViewBtn');
     
-    // Check if data is an array of objects with consistent structure
     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
-        // Get all unique keys from all objects
         const keys = new Set();
         data.forEach(item => {
             if (typeof item === 'object' && item !== null) {
@@ -692,7 +719,6 @@ function setupTableView(data) {
         });
         
         if (keys.size > 0) {
-            // Create table header
             const headerRow = document.createElement('tr');
             keys.forEach(key => {
                 const th = document.createElement('th');
@@ -701,7 +727,6 @@ function setupTableView(data) {
             });
             tableHead.appendChild(headerRow);
             
-            // Create table rows
             data.forEach(item => {
                 if (typeof item === 'object' && item !== null) {
                     const row = document.createElement('tr');
@@ -721,19 +746,15 @@ function setupTableView(data) {
                 }
             });
             
-            // Enable table view
             tableViewBtn.disabled = false;
         } else {
-            // Data is not suitable for table view
             tableViewBtn.disabled = true;
         }
     } else {
-        // Data is not suitable for table view
         tableViewBtn.disabled = true;
     }
 }
 
-// Function to find and display images from JSON
 function findAndDisplayImages(data) {
     const imagesContainer = document.getElementById('imagesContainer');
     const resultImages = document.getElementById('resultImages');
@@ -741,10 +762,8 @@ function findAndDisplayImages(data) {
     
     const imageUrls = new Set();
     
-    // Recursive function to find all URLs in the JSON data
     function findUrls(obj, path = '') {
         if (typeof obj === 'string') {
-            // Check if the string looks like an image URL
             if (isImageUrl(obj)) {
                 imageUrls.add(obj);
             }
@@ -761,7 +780,6 @@ function findAndDisplayImages(data) {
     
     findUrls(data);
     
-    // Display found images
     if (imageUrls.size > 0) {
         imageUrls.forEach(url => {
             const imgContainer = document.createElement('div');
@@ -778,13 +796,10 @@ function findAndDisplayImages(data) {
             
             resultImages.appendChild(imgContainer);
             
-            // Add click event to open image in full size
             const expandBtn = imgContainer.querySelector('.image-expand-btn');
             expandBtn.addEventListener('click', () => {
                 window.open(url, '_blank');
             });
-            
-            // Also allow clicking on the image itself
             const thumbnail = imgContainer.querySelector('.image-thumbnail');
             thumbnail.addEventListener('click', () => {
                 window.open(url, '_blank');
@@ -797,13 +812,9 @@ function findAndDisplayImages(data) {
     }
 }
 
-// Function to check if a string looks like an image URL
 function isImageUrl(str) {
-    // Basic check for common image extensions
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
     const lowercaseStr = str.toLowerCase();
-    
-    // Check if the string is a URL and ends with an image extension
     if (
         (lowercaseStr.startsWith('http://') || lowercaseStr.startsWith('https://')) &&
         imageExtensions.some(ext => lowercaseStr.endsWith(ext))
@@ -814,30 +825,22 @@ function isImageUrl(str) {
     return false;
 }
 
-// Function to validate form parameters and enable/disable execute button accordingly
 function validateFormParameters(form) {
     const executeBtn = form.querySelector('.execute-btn');
     const parameters = form.querySelectorAll('.param-value');
     let hasValidParams = false;
-    
-    // If there are no parameters, enable the button
     if (parameters.length === 0) {
         executeBtn.disabled = false;
         return;
     }
     
-    // Check each parameter to see if at least one is filled
     parameters.forEach(function(input) {
         const paramType = input.dataset.paramType;
         
         if (paramType && paramType.toLowerCase() === 'boolean') {
-            // Boolean parameters are always valid
             hasValidParams = true;
         } else if (input.value && input.value.trim() !== '') {
-            // For non-boolean parameters, check if they have a value
             hasValidParams = true;
-            
-            // For JSON inputs (arrays/objects), validate JSON
             if ((paramType && (paramType.toLowerCase() === 'array' || paramType.toLowerCase() === 'object'))) {
                 try {
                     JSON.parse(input.value);
@@ -850,7 +853,6 @@ function validateFormParameters(form) {
         }
     });
     
-    // Enable or disable the execute button based on validation
     executeBtn.disabled = !hasValidParams;
 }
 </script>
@@ -863,6 +865,20 @@ function validateFormParameters(form) {
         }
         .card:hover {
             box-shadow: 0 0 24px rgba(32,64,102,0.15);
+        }
+        
+        /* Enhanced tool card styling */
+        .list-group-item.tool-item {
+            border: 3px solid #dee2e6 !important;
+            border-radius: 12px !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+        
+        .list-group-item.tool-item:hover {
+            border-color: #2684ff !important;
+            box-shadow: 0 10px 20px rgba(38, 132, 255, 0.15);
         }
         .card-title {
             font-size: 1.2rem;
@@ -905,17 +921,7 @@ function validateFormParameters(form) {
             border: none;
             box-shadow: none;
         }
-        .tool-result {
-            word-break: break-word;
-            white-space: pre-wrap;
-            font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
-            font-size: 0.95rem;
-            background: #f8f9fa;
-            border: 1px solid #e3e6ea;
-            border-radius: 0.5rem;
-            margin-top: 1rem;
-            min-height: 2rem;
-        }
+        /* Tool result container removed as per requirements */
         
         /* JSON Tree View styles - Modern Edition */
         .json-tree-root {
@@ -1014,7 +1020,7 @@ function validateFormParameters(form) {
             display: none;
         }
         
-        @* Using proper syntax for keyframes in Razor *@
+        /* Using proper syntax for keyframes in CSS */
         @@keyframes fadeIn {
             from {
                 opacity: 0;

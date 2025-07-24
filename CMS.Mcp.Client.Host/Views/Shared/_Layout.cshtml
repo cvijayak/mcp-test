@@ -26,6 +26,28 @@
     <link href="/mcp/css/header.css?v=@versionId" rel="stylesheet">
     
     <style>
+        /* Layout Structure for Fixed Header and Scrollable Content */
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        #header {
+            flex: 0 0 auto;
+            z-index: 1000;
+        }
+        
+        #content-wrapper {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            position: relative;
+            height: calc(100vh - 60px); /* Adjust based on header height */
+        }
+        
         /* Custom styles for profile dropdown */
         .profile-dropdown {
             width: 40% !important; /* Reduced width further */
@@ -142,6 +164,10 @@
                    href="@Url.Action("Index", "Chat")" title="Chat">
                     <i class="fas fa-comments" aria-hidden="true"></i>
                 </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["action"].ToString() == "GetMcpTools" ? "active" : "")" 
+                   id="layoutMcpToolsBtn" href="javascript:void(0);" title="MCP Tools">
+                    <i class="fas fa-tools" aria-hidden="true"></i>
+                </a>
                 <a class="nav-link profile-link" href="#" role="button"
                    id="profileDropdown" data-bs-toggle="dropdown"
                    aria-haspopup="true" aria-expanded="false">
@@ -171,7 +197,9 @@
         </nav>
     </div>
 
-    @RenderBody()
+    <div id="content-wrapper">
+        @RenderBody()
+    </div>
 
     <div class="dialog-overlay" id="refreshModal" style="display: none">
         <div class="dialog-box">
@@ -677,6 +705,22 @@
                 return formatted;
             }
         }
+
+        // Handle MCP Tools button click
+        document.addEventListener('DOMContentLoaded', function() {
+            const mcpToolsBtn = document.getElementById('layoutMcpToolsBtn');
+            if (mcpToolsBtn) {
+                mcpToolsBtn.addEventListener('click', function() {
+                    // Get the currently selected server from the serverSelect dropdown if available
+                    let selectedServer = '';
+                    const serverSelect = document.getElementById('serverSelect');
+                    if (serverSelect) {
+                        selectedServer = serverSelect.value;
+                    }
+                    window.location.href = '@Url.Action("GetMcpTools", "Chat")' + (selectedServer ? '?serverName=' + encodeURIComponent(selectedServer) : '');
+                });
+            }
+        });
     </script>
 </body>
 </html>
