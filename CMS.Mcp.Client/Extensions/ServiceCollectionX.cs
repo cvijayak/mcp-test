@@ -229,9 +229,7 @@
             return services
                 .AddSingleton<Func<McpServerConfig, Task<IMcpClient>>>(sp =>
                 {
-                    var sessionProvider = sp.GetRequiredService<ISessionProvider>();
                     var cache = new ConcurrentDictionary<string, IMcpClient>();
-
                     return async c =>
                     {
                         if (c == null || string.IsNullOrEmpty(c.Name) || string.IsNullOrEmpty(c.BaseUrl))
@@ -248,7 +246,7 @@
                             return mcpClient;
                         }
 
-                        var transport = new McpSseTransport(endpoint, name, sessionProvider);
+                        var transport = ActivatorUtilities.CreateInstance<McpSseTransport>(sp, endpoint, name);
                         mcpClient = await McpClientFactory.CreateAsync(transport);
                         cache[key] = mcpClient;
 
