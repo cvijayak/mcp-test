@@ -1,6 +1,7 @@
 ﻿namespace CMS.Mcp.Server.Contracts.Monkey
 {
-    public class MonkeyHealthStats {
+    public class MonkeyHealthStats
+    {
         public int Energy { get; set; } // 0-100
         public int Happiness { get; set; } // 0-100
         public int Hunger { get; set; } // 0-100 (higher = more hungry)

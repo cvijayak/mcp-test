@@ -2,7 +2,8 @@
 {
     using System.Collections.Generic;
 
-    public class MonkeyTypeConfig {
+    public class MonkeyTypeConfig
+    {
         public double MaxMovementRadius { get; set; }
         public string PreferredTerrain { get; set; } = string.Empty;
         public int BaseEnergy { get; set; }

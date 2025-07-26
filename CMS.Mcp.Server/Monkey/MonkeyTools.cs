@@ -5,8 +5,7 @@
     using System.ComponentModel;
     using System.Text.Json;
     using System.Threading.Tasks;
-    using CMS.Mcp.Server.Contracts.Monkey;
-    using Contracts;
+    using Contracts.Monkey;
     using Microsoft.AspNetCore.Authorization;
     using ModelContextProtocol.Server;
 

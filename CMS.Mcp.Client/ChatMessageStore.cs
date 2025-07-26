@@ -1,37 +1,44 @@
 namespace CMS.Mcp.Client
 {
+    using System;
     using System.Collections.Generic;
-    using System.Threading.Tasks;
     using Contracts;
     using Contracts.Models;
+    using Microsoft.Extensions.DependencyInjection;
     using Security.Contracts.Providers;
 
-    public class ChatMessageStore(ISessionProvider sessionProvider) : IChatMessageStore
+    public class ChatMessageStore(IServiceProvider serviceProvider) : IChatMessageStore
     {
-        private readonly Dictionary<string, List<ChatMessageViewModel>> _messages = [];
+        private readonly Dictionary<Guid, List<ChatMessageViewModel>> _messages = [];
 
-        public async Task AddAsync(ChatMessageViewModel message)
+        public Guid GetUserId()
         {
-            var accessToken = await sessionProvider.GetAccessTokenAsync();
-            if (!_messages.TryGetValue(accessToken, out var chatMessages))
+            var claimStoreProvider = serviceProvider.GetRequiredService<IClaimStoreProvider>();
+            return claimStoreProvider.UserId.GetValueOrDefault();
+        }
+
+        public void Add(ChatMessageViewModel message)
+        {
+            var userId = GetUserId();
+            if (!_messages.TryGetValue(userId, out var chatMessages))
             {
                 chatMessages = [];
-                _messages.Add(accessToken, chatMessages);
+                _messages.Add(userId, chatMessages);
             }
 
             chatMessages.Add(message);
         }
 
-        public async Task<ChatMessageViewModel[]> ListAsync()
+        public ChatMessageViewModel[] List()
         {
-            var accessToken = await sessionProvider.GetAccessTokenAsync();
-            return !_messages.TryGetValue(accessToken, out var chatMessages) ? [] : chatMessages.ToArray();
+            var userId = GetUserId();
+            return !_messages.TryGetValue(userId, out var chatMessages) ? [] : chatMessages.ToArray();
         }
 
-        public async Task ClearAsync()
+        public void Clear()
         {
-            var accessToken = await sessionProvider.GetAccessTokenAsync();
-            if (!_messages.TryGetValue(accessToken, out var chatMessages))
+            var userId = GetUserId();
+            if (!_messages.TryGetValue(userId, out var chatMessages))
             {
                 return;
             }

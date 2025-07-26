@@ -1,6 +1,7 @@
 namespace CMS.Mcp.Client.Services
 {
     using System;
+    using System.Threading;
     using System.Threading.Tasks;
     using Contracts;
     using Contracts.Models;
@@ -11,7 +12,7 @@ namespace CMS.Mcp.Client.Services
 
     public class AiAssistantService(IChatMessageStore chatMessageStore, Func<string, Kernel> kernelFactory, ILogger<AiAssistantService> logger) : IAiAssistantService
     {
-        private async Task<ChatMessageViewModel> AddChatMessageAsync(string message)
+        private ChatMessageViewModel AddChatMessage(string message)
         {
             var userMessage = new ChatMessageViewModel 
             {
@@ -28,15 +29,15 @@ namespace CMS.Mcp.Client.Services
                 Timestamp = DateTime.UtcNow
             };
             
-            await chatMessageStore.AddAsync(userMessage);
-            await chatMessageStore.AddAsync(assistantMessage);
+            chatMessageStore.Add(userMessage); 
+            chatMessageStore.Add(assistantMessage);
 
             return assistantMessage;
         }
 
-        public async Task<ChatMessageViewModel> SendMessageAsync(string message, string serverName)
+        public async Task<ChatMessageViewModel> SendMessageAsync(string message, string serverName, CancellationToken cancellationToken)
         {
-            var assistantMessage = await AddChatMessageAsync(message);
+            var assistantMessage = AddChatMessage(message);
 
             try 
             {
@@ -62,7 +63,7 @@ namespace CMS.Mcp.Client.Services
                 {
                     Temperature = 0,
                     FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(options: new() { RetainArgumentTypes = true })
-                }));
+                }), cancellationToken: cancellationToken);
 #pragma warning restore SKEXP0001
 
                 assistantMessage.Content = result.GetValue<string>();
@@ -81,9 +82,9 @@ namespace CMS.Mcp.Client.Services
             }
         }
 
-        public async Task ClearChatAsync()
+        public void ClearChat()
         {
-            await chatMessageStore.ClearAsync();
+            chatMessageStore.Clear();
         }
     }
 }

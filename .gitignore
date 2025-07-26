@@ -265,3 +265,5 @@ Source/build/
 Source/Identity.Host/wwwroot/js/site.min.js
 Source/Identity.Host/wwwroot/js/login.min.js
 #*.min.css
+
+msbuild.binlog

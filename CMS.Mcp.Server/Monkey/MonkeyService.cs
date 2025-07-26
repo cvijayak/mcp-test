@@ -6,8 +6,7 @@
     using System.Net.Http;
     using System.Net.Http.Json;
     using System.Threading.Tasks;
-    using CMS.Mcp.Server.Contracts.Monkey;
-    using Contracts;
+    using Contracts.Monkey;
 
     public class MonkeyService(IHttpClientFactory httpClientFactory)
     {

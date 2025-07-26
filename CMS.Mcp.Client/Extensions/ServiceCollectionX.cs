@@ -4,6 +4,7 @@
     using System.Collections.Concurrent;
     using System.IO;
     using System.Net.Http;
+    using System.Threading;
     using System.Threading.Tasks;
     using Contracts;
     using Contracts.Options;
@@ -95,7 +96,8 @@
         private static IServiceCollection AddProviders(this IServiceCollection services)
         {
             return services
-                .AddScoped<IClaimStore, ClaimStore>()
+                .AddTransient<IClaimStore, ClaimStore>()
+                .AddTransient<IClaimStoreProvider, ClaimStoreProvider>()
                 .AddTransient<ISessionProvider, SessionProvider>();
         }
 
@@ -227,18 +229,18 @@
         private static IServiceCollection AddMcp(this IServiceCollection services)
         {
             return services
-                .AddSingleton<Func<McpServerConfig, Task<IMcpClient>>>(sp =>
+                .AddSingleton<Func<McpServerConfig, CancellationToken, Task<IMcpClient>>>(sp =>
                 {
                     var cache = new ConcurrentDictionary<string, IMcpClient>();
-                    return async c =>
+                    return async (config, cToken) =>
                     {
-                        if (c == null || string.IsNullOrEmpty(c.Name) || string.IsNullOrEmpty(c.BaseUrl))
+                        if (config == null || string.IsNullOrEmpty(config.Name) || string.IsNullOrEmpty(config.BaseUrl))
                         {
                             return null;
                         }
 
-                        var endpoint = c.GetSseUri();
-                        var name = c.Name;
+                        var endpoint = config.GetSseUri();
+                        var name = config.Name;
                         var key = $"{endpoint}:::{name}";
 
                         if (cache.TryGetValue(key, out var mcpClient))
@@ -247,7 +249,7 @@
                         }
 
                         var transport = ActivatorUtilities.CreateInstance<McpSseTransport>(sp, endpoint, name);
-                        mcpClient = await McpClientFactory.CreateAsync(transport);
+                        mcpClient = await McpClientFactory.CreateAsync(transport, cancellationToken: cToken);
                         cache[key] = mcpClient;
 
                         return mcpClient;

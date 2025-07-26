@@ -10,7 +10,7 @@
 
     public class McpSseTransport(Uri endpoint, string name, ISessionProvider sessionProvider) : IClientTransport
     {
-        public async Task<ITransport> ConnectAsync(CancellationToken cancellationToken = default) 
+        public async Task<ITransport> ConnectAsync(CancellationToken cancellationToken) 
         {
             var token = await sessionProvider.GetAccessTokenAsync();
 

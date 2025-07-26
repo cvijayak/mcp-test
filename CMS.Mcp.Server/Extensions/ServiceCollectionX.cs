@@ -69,7 +69,7 @@
                 {
                     options.ResourceMetadata = new()
                     {
-                        Resource = new Uri("http://localhost:5243"),
+                        Resource = new Uri("https://localhost:5243"),
                         AuthorizationServers = { new Uri(identityServer.Authority.ToString()) },
                         ScopesSupported = ["mcp:tools"],
                     };

@@ -522,6 +522,10 @@
                     clearChat();
                 }
             });
+            
+            // Initialize token refresh monitoring
+            startTokenRefreshMonitoring();
+            
             // getMcpToolsBtn event listener removed - now handled in _Layout.cshtml
         });
         
@@ -918,7 +922,70 @@
             }
         }
         
-        // Header styling functionality - placeholder for any future header-specific functions
+        // Token refresh functionality
+        let tokenRefreshIntervalId = null;
+        // The interval before token expiry when we should refresh it (5 minutes)
+        const TOKEN_REFRESH_LEAD_TIME = 5 * 60 * 1000; 
+        // Check token every 3 minutes - reasonable for production use
+        const TOKEN_CHECK_INTERVAL = 3 * 60 * 1000;
+        
+        function startTokenRefreshMonitoring() {
+            console.log("Token refresh monitoring started");
+            
+            // Clear any existing interval to prevent duplicates
+            if (tokenRefreshIntervalId) {
+                clearInterval(tokenRefreshIntervalId);
+                tokenRefreshIntervalId = null;
+            }
+            
+            // Initial check immediately
+            checkAndRefreshToken();
+            
+            // Start periodic checks
+            const intervalMinutes = TOKEN_CHECK_INTERVAL / (60 * 1000);
+            console.log(`Token refresh scheduler: Checking every ${intervalMinutes} minutes`);
+            tokenRefreshIntervalId = setInterval(checkAndRefreshToken, TOKEN_CHECK_INTERVAL);
+        }
+        
+        function checkAndRefreshToken() {
+            const now = new Date();
+            
+            fetch('/mcp/account/refresh-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'include' // Important to include cookies
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        console.warn('Session expired - redirecting to login');
+                        // Redirect to login or show session expired modal
+                        window.location.href = '/mcp/account/logout';
+                        return null;
+                    }
+                    throw new Error(`Token refresh failed with status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data) {
+                    // Only log on successful refresh
+                    console.log(`Token refreshed at ${now.toLocaleTimeString()}, expires: ${data.expiresAtUtc}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing token:', error);
+            });
+        }
+        
+        // Start token refresh monitoring when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add token refresh monitoring to the existing event listener
+            startTokenRefreshMonitoring();
+        });
     </script>
 }
 

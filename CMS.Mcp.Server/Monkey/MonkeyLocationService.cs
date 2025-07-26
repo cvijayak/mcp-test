@@ -2,8 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
-    using CMS.Mcp.Server.Contracts.Monkey;
-    using Contracts;
+    using Contracts.Monkey;
 
     public class MonkeyLocationService {
         private readonly Random _random = new();

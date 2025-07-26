@@ -1,6 +1,7 @@
 ﻿namespace CMS.Mcp.Server.Contracts.Monkey
 {
-    public class Monkey {
+    public class Monkey
+    {
         public string Name { get; set; }
         public string Location { get; set; }
         public string Details { get; set; }

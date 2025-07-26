@@ -3,6 +3,7 @@ namespace CMS.Mcp.Client.Controllers
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
     using Contracts;
     using Contracts.Models;
@@ -49,7 +50,7 @@ namespace CMS.Mcp.Client.Controllers
 
         [HttpPost]
         [Route("SendMessage")]
-        public async Task<IActionResult> SendMessage(string message, string serverName = null)
+        public async Task<IActionResult> SendMessage(string message, string serverName, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(message))
             {
@@ -59,9 +60,9 @@ namespace CMS.Mcp.Client.Controllers
             try
             {
                 var toolService = GetMcpToolService(serverName);
-                await toolService.RegisterToolsAsync();
+                await toolService.RegisterToolsAsync(cancellationToken);
 
-                var response = await aiAssistantService.SendMessageAsync(message, serverName);
+                var response = await aiAssistantService.SendMessageAsync(message, serverName, cancellationToken);
                 return Json(response);
             }
             catch (Exception ex)
@@ -73,29 +74,29 @@ namespace CMS.Mcp.Client.Controllers
 
         [HttpPost]
         [Route("ClearChat")]
-        public async Task<IActionResult> ClearChat()
+        public IActionResult ClearChat()
         {
-            await aiAssistantService.ClearChatAsync();
+            aiAssistantService.ClearChat();
             return Json(new { success = true, message = "Chat cleared successfully" });
         }
 
         [HttpGet]
         [Authorize]
         [Route("GetMessages")]
-        public async Task<IActionResult> GetMessages()
+        public IActionResult GetMessages()
         {
-            var messages = await chatMessageStore.ListAsync();
+            var messages = chatMessageStore.List();
             return Json(messages);
         }
 
         [HttpGet]
         [Authorize]
         [Route("GetMcpTools")]
-        public async Task<IActionResult> GetMcpTools(string serverName = null)
+        public async Task<IActionResult> GetMcpTools(string serverName, CancellationToken cancellationToken)
         {
             var availableServers = _serverOptions.McpServers?.Select(s => s.Name).ToArray() ?? Array.Empty<string>();
             var toolService = GetMcpToolService(serverName);
-            var tools = await toolService.GetToolsAsync();
+            var tools = await toolService.GetToolsAsync(cancellationToken);
             
             ViewBag.ServerOptions = availableServers;
             ViewBag.SelectedServer = serverName;
@@ -106,7 +107,7 @@ namespace CMS.Mcp.Client.Controllers
         [HttpPost]
         [Authorize]
         [Route("ExecuteTool")]
-        public async Task<IActionResult> ExecuteTool([FromBody] ExecuteToolRequest request)
+        public async Task<IActionResult> ExecuteTool([FromBody] ExecuteToolRequest request, CancellationToken cancellationToken)
         {
             var toolNameToUse = request?.ToolName;
             var serverNameToUse = request?.ServerName;
@@ -118,35 +119,9 @@ namespace CMS.Mcp.Client.Controllers
             }
             
             var toolService = GetMcpToolService(serverNameToUse);
-            var result = await toolService.ExecuteToolAsync(toolNameToUse, paramDict.ToDictionary(x => x.Key, x => x.Value));
+            var result = await toolService.ExecuteToolAsync(toolNameToUse, paramDict.ToDictionary(x => x.Key, x => x.Value), cancellationToken);
             return Json(result);
         }
-        
-        //[HttpPost]
-        //[Authorize]
-        //[Route("ExecuteToolForm")]
-        //public async Task<IActionResult> ExecuteToolForm(string toolName, string serverName, [FromForm] Dictionary<string, string> parameters)
-        //{
-        //    if (string.IsNullOrEmpty(toolName))
-        //    {
-        //        return BadRequest("Tool name is required");
-        //    }
-            
-        //    var paramDict = new Dictionary<string, object>();
-        //    foreach (var param in parameters)
-        //    {
-        //        if (param.Key != "toolName" && param.Key != "serverName" && !string.IsNullOrEmpty(param.Value))
-        //        {
-        //            paramDict[param.Key] = param.Value;
-        //        }
-        //    }
-            
-        //    var toolService = GetMcpToolService(serverName);
-        //    var result = await toolService.ExecuteToolAsync(toolName, paramDict);
-            
-        //    TempData["ToolResult"] = result?.ToString() ?? "Tool executed successfully";
-        //    return RedirectToAction("GetMcpTools", new { serverName = serverName });
-        //}
         
         [HttpGet]
         [AllowAnonymous]
