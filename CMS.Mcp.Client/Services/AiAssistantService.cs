@@ -1,6 +1,7 @@
 namespace CMS.Mcp.Client.Services
 {
     using System;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Contracts;
@@ -10,7 +11,7 @@ namespace CMS.Mcp.Client.Services
     using Microsoft.SemanticKernel;
     using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-    public class AiAssistantService(IChatMessageStore chatMessageStore, Func<string, Kernel> kernelFactory, ILogger<AiAssistantService> logger) : IAiAssistantService
+    public class AiAssistantService(IChatMessageStore chatMessageStore, ISummaryStore summaryStore, Func<string, Kernel> kernelFactory, ILogger<AiAssistantService> logger) : IAiAssistantService
     {
         private ChatMessageViewModel AddChatMessage(string message)
         {
@@ -33,6 +34,22 @@ namespace CMS.Mcp.Client.Services
             chatMessageStore.Add(assistantMessage);
 
             return assistantMessage;
+        }
+
+        private async Task SummarizeAsync(Kernel kernel)
+        {
+            var buffer = new StringBuilder();
+            foreach (var message in chatMessageStore.List())
+            {
+                buffer.AppendLine(message.Role == ChatRole.User ? $"User: {message.Content}" : (!message.IsProcessing ? $"Assistant: {message.Content}" : string.Empty));
+            }
+
+            string fullHistory = buffer.ToString();
+            string summaryPrompt = $"Summarize the following conversation history briefly for context:\n{fullHistory}\nSummary:";
+
+            var summaryResult = await kernel.InvokePromptAsync(summaryPrompt, new KernelArguments(new OpenAIPromptExecutionSettings { Temperature = 0 }));
+
+            summaryStore.Add(summaryResult.GetValue<string>());
         }
 
         public async Task<ChatMessageViewModel> SendMessageAsync(string message, string serverName, CancellationToken cancellationToken)
@@ -58,8 +75,10 @@ namespace CMS.Mcp.Client.Services
                     return assistantMessage;
                 }
 
+                string prompt = $"{summaryStore.Get()}\nUser: {message}\nAssistant:";
+
 #pragma warning disable SKEXP0001
-                var result = await kernel.InvokePromptAsync(message, new KernelArguments(new OpenAIPromptExecutionSettings
+                var result = await kernel.InvokePromptAsync(prompt, new KernelArguments(new OpenAIPromptExecutionSettings
                 {
                     Temperature = 0,
                     FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(options: new() { RetainArgumentTypes = true })
@@ -71,6 +90,9 @@ namespace CMS.Mcp.Client.Services
                 logger.LogInformation($"Successfully generated response: {assistantMessage.Content[..Math.Min(assistantMessage.Content.Length, 50)]}...");
 
                 assistantMessage.IsProcessing = false;
+
+                await SummarizeAsync(kernel);
+
                 return assistantMessage;
             } 
             catch (Exception ex) 

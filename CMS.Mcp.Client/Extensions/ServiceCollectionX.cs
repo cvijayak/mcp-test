@@ -68,7 +68,9 @@
 
         private static IServiceCollection AddStores(this IServiceCollection services)
         {
-            return services.AddSingleton<IChatMessageStore, ChatMessageStore>();
+            return services
+                .AddSingleton<IChatMessageStore, ChatMessageStore>()
+                .AddSingleton<ISummaryStore, SummaryStore>();
         }
 
         private static IServiceCollection AddServices(this IServiceCollection services)
