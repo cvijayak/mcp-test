@@ -47,7 +47,9 @@ namespace CMS.Mcp.Client.Services
             string fullHistory = buffer.ToString();
             string summaryPrompt = $"Summarize the following conversation history briefly for context:\n{fullHistory}\nSummary:";
 
-            var summaryResult = await kernel.InvokePromptAsync(summaryPrompt, new KernelArguments(new OpenAIPromptExecutionSettings { Temperature = 0 }));
+            var promptExecutionSettings = new OpenAIPromptExecutionSettings { Temperature = 0 };
+            var kernelArguments = new KernelArguments(promptExecutionSettings);
+            var summaryResult = await kernel.InvokePromptAsync(summaryPrompt, kernelArguments);
 
             summaryStore.Add(summaryResult.GetValue<string>());
         }
@@ -78,11 +80,14 @@ namespace CMS.Mcp.Client.Services
                 string prompt = $"Summary:{summaryStore.Get()}\nUser: {message}\nAssistant:";
 
 #pragma warning disable SKEXP0001
-                var result = await kernel.InvokePromptAsync(prompt, new KernelArguments(new OpenAIPromptExecutionSettings
+                var options = new FunctionChoiceBehaviorOptions { RetainArgumentTypes = true };
+                var promptExecutionSettings = new OpenAIPromptExecutionSettings
                 {
                     Temperature = 0,
-                    FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(options: new() { RetainArgumentTypes = true })
-                }), cancellationToken: cancellationToken);
+                    FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(options: options)
+                };
+                var kernelArguments = new KernelArguments(promptExecutionSettings);
+                var result = await kernel.InvokePromptAsync(prompt, kernelArguments, cancellationToken: cancellationToken);
 #pragma warning restore SKEXP0001
 
                 assistantMessage.Content = result.GetValue<string>();
