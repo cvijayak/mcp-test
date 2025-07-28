@@ -1,6 +1,7 @@
 namespace CMS.Mcp.Client.Services
 {
     using System;
+    using System.Linq;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -15,22 +16,22 @@ namespace CMS.Mcp.Client.Services
     {
         private ChatMessageViewModel AddChatMessage(string message)
         {
-            var userMessage = new ChatMessageViewModel 
+            var userMessage = new ChatMessageViewModel
             {
                 Content = message,
                 Role = ChatRole.User,
                 Timestamp = DateTime.UtcNow
             };
 
-            var assistantMessage = new ChatMessageViewModel 
+            var assistantMessage = new ChatMessageViewModel
             {
                 Content = "...",
                 Role = ChatRole.Assistant,
                 IsProcessing = true,
                 Timestamp = DateTime.UtcNow
             };
-            
-            chatMessageStore.Add(userMessage); 
+
+            chatMessageStore.Add(userMessage);
             chatMessageStore.Add(assistantMessage);
 
             return assistantMessage;
@@ -58,7 +59,7 @@ namespace CMS.Mcp.Client.Services
         {
             var assistantMessage = AddChatMessage(message);
 
-            try 
+            try
             {
                 if (string.IsNullOrEmpty(serverName))
                 {
@@ -66,9 +67,9 @@ namespace CMS.Mcp.Client.Services
                     assistantMessage.IsProcessing = false;
                     return assistantMessage;
                 }
-                
+
                 logger.LogInformation($"Processing message: {message} with server: {serverName}");
-                
+
                 var kernel = kernelFactory(serverName);
                 if (kernel == null)
                 {
@@ -99,8 +100,8 @@ namespace CMS.Mcp.Client.Services
                 await SummarizeAsync(kernel);
 
                 return assistantMessage;
-            } 
-            catch (Exception ex) 
+            }
+            catch (Exception ex)
             {
                 assistantMessage.Content = $"Error: {ex.Message}";
                 assistantMessage.IsProcessing = false;
@@ -109,9 +110,54 @@ namespace CMS.Mcp.Client.Services
             }
         }
 
+        public async Task<string[]> GetSuggestionsAsync(string serverName, CancellationToken cancellationToken)
+        {
+            string suggestionsPrompt = $"""
+                                        Based on the summary and assistant's reply below, suggest three concise follow-up questions or clarifications. Return empty if summary or assistant's reply is empty:
+
+                                        Summary:
+                                        {summaryStore.Get()}
+                                        
+                                        Assistant said:
+                                        {chatMessageStore.LastOrDefault()?.Content ?? string.Empty} 
+                                                                 
+                                        Suggestions:
+                                        1.
+                                        2.
+                                        3.
+                                        """;
+
+            var kernel = kernelFactory(serverName);
+            if (kernel == null)
+            {
+                return [];
+            }
+
+            var executionSettings = new OpenAIPromptExecutionSettings { Temperature = 0.3 };
+            var arguments = new KernelArguments(executionSettings);
+            var suggestionsResponse = await kernel.InvokePromptAsync(suggestionsPrompt, arguments, cancellationToken: cancellationToken);
+
+            var suggestions = suggestionsResponse.GetValue<string>();
+
+            return suggestions
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(line =>
+                {
+                    int dotIndex = line.IndexOf('.');
+                    if (dotIndex >= 0 && dotIndex + 1 < line.Length)
+                    {
+                        return line[(dotIndex + 1)..].Trim();
+                    }
+
+                    return line.Trim();
+                })
+                .ToArray();
+        }
+
         public void ClearChat()
         {
             chatMessageStore.Clear();
         }
     }
 }
+                                                                                   

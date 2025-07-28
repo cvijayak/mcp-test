@@ -35,6 +35,12 @@
                 </div>
             </div>
             
+            <div class="chat-suggestions-container" id="suggestionsContainer" style="display: block;">
+                <!-- Suggestions will be populated here -->
+                <div class="chat-suggestions-title">Suggestions:</div>
+                <div class="chat-suggestions" id="suggestionsList"></div>
+            </div>
+            
             <div class="chat-input-container">
                 <div class="row mb-2">
                     <div class="col-md-12">
@@ -177,6 +183,65 @@
             pointer-events: auto; /* Ensure clicks work properly */
         }
 
+        /* Chat suggestions container */
+        .chat-suggestions-container {
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .chat-suggestions-title {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .chat-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: flex-start;
+        }
+        
+        .suggestion-chip {
+            display: inline-flex;
+            align-items: center;
+            background-color: #f0f2f5;
+            border: 1px solid #dee2e6;
+            border-radius: 16px;
+            padding: 5px 12px;
+            font-size: 0.9rem;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            /* Remove max-width restriction to prevent truncation */
+            /* Allow text to wrap if needed */
+            white-space: normal;
+            word-break: break-word;
+            /* Add a small height limit with wrapping for very long suggestions */
+            max-height: 60px;
+            overflow-y: auto;
+        }
+        
+        .suggestion-chip:hover {
+            background-color: #e2e6ea;
+            border-color: #ced4da;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .suggestion-chip:active {
+            transform: translateY(0);
+        }
+        
+        @@keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
         /* Chat input container */
         .chat-input-container {
             flex: 0 0 auto;
@@ -497,6 +562,7 @@
             loadingIndicator.classList.add('d-none');
             messageInput.focus();
             fetchMessages();
+            fetchSuggestions();
             initImageViewer();
             fetchMcpServers();
             
@@ -700,6 +766,8 @@
                 fetchMessages();
                 // Re-enable the send button
                 toggleSendButtonLoading(false);
+                // Refresh suggestions after sending a message
+                setTimeout(fetchSuggestions, 1000);
             })
             .catch(error => {
                 console.error('Error sending message:', error);
@@ -713,6 +781,8 @@
                 loadingIndicator.classList.add('d-none');
                 // Re-enable the send button
                 toggleSendButtonLoading(false);
+                // Hide suggestions on error
+                hideSuggestionsContainer();
             });
         }
 
@@ -979,6 +1049,68 @@
             .catch(error => {
                 console.error('Error refreshing token:', error);
             });
+        }
+        
+        // Suggestion functions
+        function fetchSuggestions() {
+            fetch('@Url.Action("GetSuggestions", "Chat")')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch suggestions');
+                    }
+                    return response.json();
+                })
+                .then(suggestions => {
+                    if (Array.isArray(suggestions) && suggestions.length > 0) {
+                        displaySuggestions(suggestions);
+                    } else {
+                        hideSuggestionsContainer();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching suggestions:', error);
+                    hideSuggestionsContainer();
+                });
+        }
+        
+        function displaySuggestions(suggestions) {
+            const suggestionsList = document.getElementById('suggestionsList');
+            suggestionsList.innerHTML = '';
+            
+            suggestions.forEach(suggestion => {
+                const chip = document.createElement('div');
+                chip.className = 'suggestion-chip';
+                chip.textContent = suggestion.text;
+                chip.dataset.id = suggestion.id;
+                chip.dataset.text = suggestion.text;
+                
+                chip.addEventListener('click', function() {
+                    // Fill the input with the suggestion text
+                    document.getElementById('messageInput').value = this.dataset.text;
+                    // Focus on the input
+                    document.getElementById('messageInput').focus();
+                    // Hide the suggestions container after selection
+                    hideSuggestionsContainer();
+                    // Optionally, send the message immediately
+                    // sendMessage();
+                });
+                
+                suggestionsList.appendChild(chip);
+            });
+            
+            // Show the suggestions container
+            document.getElementById('suggestionsContainer').style.display = 'block';
+        }
+        
+        function hideSuggestionsContainer() {
+            document.getElementById('suggestionsContainer').style.display = 'none';
+        }
+        
+        function clearSuggestions() {
+            const suggestionsList = document.getElementById('suggestionsList');
+            if (suggestionsList) {
+                suggestionsList.innerHTML = '';
+            }
         }
         
         // Start token refresh monitoring when the page loads

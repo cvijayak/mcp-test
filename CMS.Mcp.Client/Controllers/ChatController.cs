@@ -1,4 +1,4 @@
-namespace CMS.Mcp.Client.Controllers 
+namespace CMS.Mcp.Client.Controllers
 {
     using System;
     using System.Collections.Generic;
@@ -13,6 +13,7 @@ namespace CMS.Mcp.Client.Controllers
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
+    using Org.BouncyCastle.Tls;
 
     [Authorize]
     [Route("mcp/chat")]
@@ -137,6 +138,30 @@ namespace CMS.Mcp.Client.Controllers
             {
                 logger.LogError(ex, "Error getting MCP servers");
                 return Json(Array.Empty<string>());
+            }
+        }
+        
+        [HttpGet]
+        [Authorize]
+        [Route("GetSuggestions")]
+        public async Task<IActionResult> GetSuggestionsAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var nameOfServer = _serverOptions.McpServers?.FirstOrDefault()?.Name;
+                var suggestions = (await aiAssistantService.GetSuggestionsAsync(nameOfServer, cancellationToken))
+                    .Select((s, i) => new ChatSuggestionViewModel
+                    {
+                        Id = i.ToString(),
+                        Text = s
+                    }).ToList();
+
+                return Json(suggestions);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error getting chat suggestions");
+                return Json(Array.Empty<ChatSuggestionViewModel>());
             }
         }
     }

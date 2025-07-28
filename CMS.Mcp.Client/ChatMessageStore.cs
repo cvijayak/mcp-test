@@ -2,6 +2,7 @@ namespace CMS.Mcp.Client
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using Contracts;
     using Contracts.Models;
     using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,12 @@ namespace CMS.Mcp.Client
         {
             var userId = GetUserId();
             return !_messages.TryGetValue(userId, out var chatMessages) ? [] : chatMessages.ToArray();
+        }
+
+        public ChatMessageViewModel LastOrDefault()
+        {
+            var userId = GetUserId();
+            return !_messages.TryGetValue(userId, out var chatMessages) ? null : chatMessages.LastOrDefault();
         }
 
         public void Clear()

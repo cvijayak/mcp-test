@@ -6,6 +6,7 @@ namespace CMS.Mcp.Client.Contracts
     {
         void Add(ChatMessageViewModel message);
         ChatMessageViewModel[] List();
+        ChatMessageViewModel LastOrDefault();
         void Clear();
     }
 }
