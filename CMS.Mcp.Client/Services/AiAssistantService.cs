@@ -75,7 +75,7 @@ namespace CMS.Mcp.Client.Services
                     return assistantMessage;
                 }
 
-                string prompt = $"{summaryStore.Get()}\nUser: {message}\nAssistant:";
+                string prompt = $"Summary:{summaryStore.Get()}\nUser: {message}\nAssistant:";
 
 #pragma warning disable SKEXP0001
                 var result = await kernel.InvokePromptAsync(prompt, new KernelArguments(new OpenAIPromptExecutionSettings
