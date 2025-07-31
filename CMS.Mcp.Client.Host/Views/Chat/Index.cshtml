@@ -35,10 +35,13 @@
                 </div>
             </div>
             
-            <div class="chat-suggestions-container" id="suggestionsContainer" style="display: block;">
+            <div class="chat-suggestions-container" id="suggestionsContainer">
                 <!-- Suggestions will be populated here -->
                 <div class="chat-suggestions-title">Suggestions:</div>
-                <div class="chat-suggestions" id="suggestionsList"></div>
+                <div class="chat-suggestions" id="suggestionsList">
+                    <!-- Default empty state -->
+                    <div class="suggestion-empty-state">No suggestions available</div>
+                </div>
             </div>
             
             <div class="chat-input-container">
@@ -72,6 +75,39 @@
 
 @section Styles {
     <style>
+        /* CSS Variables for theming */
+        :root {
+            /* Main theme colors */
+            --primary-blue: #0074CC;
+            --dark-blue: #005A9E;
+            --light-blue: #EAF4FC;
+            --very-light-blue: #F7FBFF;
+            --success-green: #28a745;
+            --danger-red: #dc3545;
+            --warning-yellow: #ffc107;
+            
+            /* Code syntax highlighting colors */
+            --code-bg: #f8f8f8;
+            --code-border: #e1e1e8;
+            --code-text: #333;
+            --code-comment: #6a9955;
+            --code-keyword: #0000ff;
+            --code-string: #a31515;
+            --code-number: #098658;
+            --code-function: #795e26;
+            --code-type: #267f99;
+            --code-variable: #001080;
+            --code-operator: #000000;
+            --code-punctuation: #000000;
+        }
+        
+        /* Global rule to ensure all interactive elements work */
+        button, a, input, select, textarea, [role="button"], .clickable {
+            pointer-events: auto !important;
+            position: relative;
+            z-index: 10;
+        }
+        
         /* Reset and base styles */
         html, body {
             height: 100%;
@@ -181,6 +217,23 @@
             box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
             margin: 10px 10px 0 10px;
             pointer-events: auto; /* Ensure clicks work properly */
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Fix for clickable controls - enhanced version */
+        .chat-container *,
+        .chat-input-container *,
+        .chat-suggestions-container *,
+        button, 
+        a, 
+        input, 
+        select, 
+        [role="button"],
+        .clickable {
+            pointer-events: auto !important;
+            position: relative;
+            z-index: 10;
         }
 
         /* Chat suggestions container */
@@ -204,6 +257,15 @@
             gap: 10px;
             margin-bottom: 10px;
             align-items: flex-start;
+            padding: 2px;
+        }
+        
+        .suggestion-empty-state {
+            color: #6c757d;
+            font-style: italic;
+            font-size: 0.9rem;
+            padding: 5px;
+            width: 100%;
         }
         
         .suggestion-chip {
@@ -212,11 +274,11 @@
             background-color: #f0f2f5;
             border: 1px solid #dee2e6;
             border-radius: 16px;
-            padding: 5px 12px;
+            padding: 8px 14px;
             font-size: 0.9rem;
             color: #495057;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             /* Remove max-width restriction to prevent truncation */
             /* Allow text to wrap if needed */
             white-space: normal;
@@ -224,17 +286,38 @@
             /* Add a small height limit with wrapping for very long suggestions */
             max-height: 60px;
             overflow-y: auto;
+            /* Enhanced styling */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            position: relative;
         }
         
         .suggestion-chip:hover {
-            background-color: #e2e6ea;
-            border-color: #ced4da;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            background-color: #e4e9f2;
+            border-color: var(--primary-blue, #204066);
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            color: var(--primary-blue, #204066);
         }
         
         .suggestion-chip:active {
             transform: translateY(0);
+            background-color: #d8e0ed;
+        }
+        
+        .suggestion-chip::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 2px;
+            background-color: var(--primary-blue, #204066);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .suggestion-chip:hover::before {
+            opacity: 1;
         }
         
         @@keyframes fadeIn {
@@ -250,6 +333,9 @@
             padding: 10px 15px;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
             margin: 0;
+            position: relative;
+            z-index: 100; /* Higher z-index to ensure proper stacking */
+            pointer-events: auto !important; /* Force pointer events to work */
         }
         
         /* Message styles */
@@ -294,14 +380,9 @@
         }
         
         @@keyframes dot-pulse {
-            0%, 100% {
-                transform: scale(1);
-                opacity: 0.5;
-            }
-            50% {
-                transform: scale(1.3);
-                opacity: 1;
-            }
+            0% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.5; }
         }
         
         .message {
@@ -328,6 +409,17 @@
             position: relative;
             word-wrap: break-word;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            z-index: 2; /* Ensure content is above other elements */
+        }
+        
+        /* Ensure interactive elements within messages are clickable */
+        .message-content a,
+        .message-content button,
+        .message-content [role="button"],
+        .message-content .clickable {
+            position: relative;
+            z-index: 3;
+            cursor: pointer;
         }
 
         .user .message-content {
@@ -357,36 +449,107 @@
             display: none !important;
         }
         
+        /* Code block styling */
         pre {
-            background-color: #f0f0f0;
-            border-radius: 4px;
-            padding: 8px;
-            margin: 8px 0;
+            background-color: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px 0;
             overflow-x: auto;
-            font-family: 'Consolas', 'Monaco', monospace;
+            position: relative;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             font-size: 0.9em;
+            line-height: 1.5;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         
+        /* Add language indicator and copy button */
+        pre::before {
+            content: attr(data-language);
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 2px 8px;
+            font-size: 0.7em;
+            background: rgba(0,0,0,0.05);
+            border-bottom-left-radius: 4px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        
+        /* Copy button for code blocks */
+        pre .copy-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: transparent;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 2px;
+            font-size: 14px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        
+        pre:hover .copy-button {
+            opacity: 1;
+        }
+        
+        /* Basic styling for inline code */
         code {
-            background-color: #f0f0f0;
+            background-color: rgba(0,0,0,0.05);
             padding: 2px 4px;
-            border-radius: 3px;
-            font-family: 'Consolas', 'Monaco', monospace;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             font-size: 0.9em;
+            color: var(--code-text);
         }
         
-        .assistant .message-content pre,
-        .assistant .message-content code {
-            background-color: rgba(32, 64, 102, 0.1);
-            border: 1px solid rgba(32, 64, 102, 0.2);
+        /* Code inside pre should not have background */
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+            display: block;
         }
         
-        .user .message-content pre,
+        /* Dark theme for code blocks in assistant messages */
+        .assistant .message-content pre {
+            background-color: var(--code-bg);
+            border-color: var(--code-border);
+        }
+        
+        /* Dark theme for code blocks in user messages */
+        .user .message-content pre {
+            background-color: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        
         .user .message-content code {
-            background-color: rgba(255, 255, 255, 0.2);
+            background-color: rgba(255,255,255,0.2);
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
         }
+        
+        /* Syntax highlighting for specific languages */
+        .language-csharp .keyword,
+        .language-cs .keyword { color: var(--code-keyword); }
+        
+        .language-csharp .string,
+        .language-cs .string { color: var(--code-string); }
+        
+        .language-csharp .comment,
+        .language-cs .comment { color: var(--code-comment); font-style: italic; }
+        
+        .language-csharp .number,
+        .language-cs .number { color: var(--code-number); }
+        
+        .language-csharp .type,
+        .language-cs .type { color: var(--code-type); }
+        
+        /* Add more syntax highlighting as needed for other languages */
         
         .chat-input-container .form-control {
             border-color: var(--light-blue);
@@ -409,10 +572,21 @@
             border-color: var(--dark-blue);
         }
         
+        /* Ensure input group elements are clickable */
+        .chat-input-container .input-group,
+        .chat-input-container .input-group * {
+            position: relative;
+            z-index: 1000;
+            pointer-events: auto !important;
+        }
+        
         /* Send button styling */
         #sendMessageBtn {
             min-width: 110px;
             transition: all 0.3s ease;
+            position: relative;
+            z-index: 1000; /* Higher z-index to ensure it's above other elements */
+            pointer-events: auto !important; /* Force pointer events to work */
         }
         
         #sendMessageBtn:disabled {
@@ -440,6 +614,171 @@
             display: block;
             flex-basis: 100%;
             margin-top: 8px;
+        }
+        
+        /* Enhanced styling for HTML content in messages */
+        .message-content img:not(.image-thumbnail):not(.tool-result-thumbnail) {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            margin: 8px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: block; /* Ensures block display */
+        }
+        
+        .message-content img:not(.image-thumbnail):not(.tool-result-thumbnail):hover {
+            transform: scale(1.02);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+        
+        /* Fix for images in HTML content */
+        .embedded-content-image {
+            display: block !important;
+            max-width: 100% !important;
+            height: auto !important;
+            margin: 10px 0 !important;
+            border-radius: 5px;
+            object-fit: contain !important;
+            background-color: rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Image error styling */
+        .image-error {
+            display: block;
+            padding: 10px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 6px;
+            color: #721c24;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+        
+        /* Force images to display properly */
+        .message-content img {
+            display: block !important;
+            max-width: 100% !important;
+            height: auto !important;
+            object-fit: contain;
+        }
+        
+        .message-content table {
+            border-collapse: collapse;
+            margin: 10px 0;
+            width: 100%;
+            overflow-x: auto;
+            display: table;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            border-radius: 6px;
+            table-layout: auto;
+        }
+        
+        /* Table cell styling for better image display */
+        .message-content table th,
+        .message-content table td {
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            vertical-align: middle;
+        }
+        
+        /* Special handling for table cells with images */
+        .message-content table td img {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .message-content th, 
+        .message-content td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+            min-width: 100px; /* Prevent columns from becoming too narrow */
+        }
+        
+        .message-content th {
+            background-color: rgba(32, 64, 102, 0.1);
+            color: #204066;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        .message-content tr:nth-child(even) {
+            background-color: rgba(0,0,0,0.02);
+        }
+        
+        .message-content tr:hover {
+            background-color: rgba(32, 64, 102, 0.05);
+        }
+        
+        /* Interactive table row styling */
+        .message-content .clickable-row {
+            transition: background-color 0.2s ease;
+        }
+        
+        .message-content .clickable-row:hover {
+            background-color: rgba(32, 64, 102, 0.1);
+        }
+        
+        .message-content .clickable-row:active {
+            background-color: rgba(32, 64, 102, 0.15);
+        }
+        
+        /* Fix to ensure table cells don't overflow */
+        .message-content td {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        /* Allow cell content to wrap on smaller screens */
+        @@media (max-width: 768px) {
+            .message-content td {
+                white-space: normal;
+                word-break: break-word;
+            }
+        }
+        
+        /* Table container for horizontal scrolling */
+        .message-content .table-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        
+        /* Images within tables need special handling */
+        .message-content .table-container img {
+            max-height: 200px;
+            object-fit: contain;
+            margin: 5px auto;
+        }
+        
+        /* Enhanced table wrapper for better control */
+        .message-content .table-wrapper {
+            position: relative;
+            margin: 15px 0;
+        }
+        
+        .message-content ul, 
+        .message-content ol {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+        
+        .message-content a {
+            color: #0d6efd;
+            text-decoration: underline;
         }
         
         .image-thumbnail, .tool-result-thumbnail {
@@ -485,17 +824,331 @@
         /* Tool result container styles */
         .tool-result-container {
             border: 1px solid var(--light-blue);
-            border-radius: 6px;
+            border-radius: 8px;
             overflow: hidden;
+            max-height: 80vh; /* Limit height to 80% of viewport height */
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.12);
+            position: relative;
+            margin: 15px 0;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            background-color: #fff;
+        }
+        
+        /* Animation classes */
+        
+        .tool-result-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .tool-result-hiding {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
         
         .tool-result-header {
             background-color: #f8f9fa;
             color: var(--dark-blue);
-            font-size: 0.85rem;
-            padding: 6px 10px;
+            font-size: 0.95rem;
+            padding: 12px 15px;
             font-weight: 500;
             border-bottom: 1px solid var(--light-blue);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            user-select: none;
+            height: 56px;
+            box-sizing: border-box;
+        }
+        
+        /* Tool Result Header View Toggle Buttons */
+        .tool-result-view-toggles {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .view-toggle-btn {
+            background-color: transparent;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            color: #495057;
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .view-toggle-btn:hover {
+            background-color: #f1f3f5;
+            color: var(--dark-blue);
+        }
+        
+        .view-toggle-btn.active {
+            background-color: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+            font-weight: 500;
+        }
+        
+        .tool-result-content {
+            overflow-y: auto;
+            padding: 15px;
+            flex: 1;
+            max-height: calc(80vh - 110px); /* Account for header and footer height */
+            position: relative;
+        }
+        
+        /* Style for the different views */
+        .tool-result-view {
+            display: none;
+        }
+        
+        .tool-result-view.active {
+            display: block;
+        }
+        
+        /* JSON View styling */
+        .json-view pre {
+            margin: 0;
+            padding: 0;
+            white-space: pre-wrap;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        /* Tree View styling */
+        .tree-view {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+        }
+        
+        /* Tool result footer styles */
+        .tool-result-footer {
+            background-color: #f8f9fa;
+            border-top: 1px solid var(--light-blue);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            height: 48px;
+            box-sizing: border-box;
+        }
+        
+        .tool-result-close {
+            background: none;
+            border: none;
+            color: var(--dark-blue);
+            font-size: 1rem;
+            cursor: pointer;
+            opacity: 0.7;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .tool-result-close:hover {
+            opacity: 1;
+        }
+        
+        .tool-result-footer-close {
+            background-color: #f1f3f5;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            color: var(--dark-blue);
+            padding: 6px 15px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+        
+        .tool-result-footer-close:hover {
+            background-color: #e9ecef;
+        }
+        
+        .tool-result-text {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #333;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        
+        /* Table view styles */
+        .table-view table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 0;
+            font-size: 0.85rem;
+        }
+        
+        .table-view th {
+            background-color: #f1f3f5;
+            color: #495057;
+            font-weight: 600;
+            text-align: left;
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .table-view td {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        .table-view tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        /* Tree view styles */
+        .tree-node {
+            margin: 4px 0;
+            font-size: 0.85rem;
+        }
+        
+        .tree-node-key {
+            color: #0066cc;
+            font-weight: 600;
+        }
+        
+        .tree-node-content {
+            padding: 4px 0;
+        }
+        
+        /* For JSON/code content */
+        .tool-result-content pre {
+            margin: 0;
+            max-height: 100%;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+        }
+        
+        /* Tool result view styles */
+        .tool-result-view {
+            display: none; /* Hidden by default */
+        }
+        
+        .tool-result-view.active {
+            display: block; /* Show active view */
+        }
+        
+        /* JSON view styling */
+        .json-view {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        
+        /* Tree view styling */
+        .tree-view {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+        }
+        
+        .tree-view ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+        
+        .tree-view .tree-item {
+            margin: 2px 0;
+        }
+        
+        .tree-view .tree-key {
+            color: #7b2f99;
+            font-weight: 500;
+        }
+        
+        .tree-view .tree-value {
+            color: #257a30;
+        }
+        
+        .tree-view .tree-expander {
+            cursor: pointer;
+            color: #333;
+            margin-right: 5px;
+        }
+        
+        /* Table view styling */
+        .table-view {
+            width: 100%;
+        }
+        
+        .table-view table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table-view th {
+            background-color: rgba(32, 64, 102, 0.1);
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+        
+        .table-view td {
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        
+        .table-view tr:nth-child(even) {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+        
+        /* Add custom scrollbar for tool result content */
+        .tool-result-content::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .tool-result-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .tool-result-content::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+        
+        .tool-result-content::-webkit-scrollbar-thumb:hover {
+            background: #aaa;
         }
         
         /* Image viewer modal */
@@ -522,6 +1175,9 @@
             max-width: 100%;
             max-height: 90vh;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            object-fit: contain;
+            background-color: rgba(255,255,255,0.05);
+            border-radius: 4px;
         }
         
         .image-viewer-close {
@@ -546,7 +1202,8 @@
 
 @section Scripts {
     <script>
-        const chatMessages = document.getElementById('chatMessages');
+        // Use let instead of const for chatMessages since it will be initialized later
+        let chatMessages;
         const messageInput = document.getElementById('messageInput');
         const sendMessageBtn = document.getElementById('sendMessageBtn');
         const clearChatBtn = document.getElementById('clearChatBtn');
@@ -561,10 +1218,33 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadingIndicator.classList.add('d-none');
             messageInput.focus();
+            initChatContainer(); // Initialize chat container first
             fetchMessages();
             fetchSuggestions();
             initImageViewer();
+            initCodeBlockHandlers();
             fetchMcpServers();
+            
+            // Add global click handler to ensure controls work
+            document.addEventListener('click', (e) => {
+                console.log('Document click registered:', e.target.tagName, e.target.id || e.target.className);
+            });
+            
+            // Test code blocks styling with a sample (delete in production)
+            setTimeout(() => {
+                const testMessage = {
+                    id: 'test-code-blocks',
+                    role: 'assistant',
+                    content: 'Here\'s a C# code example with proper syntax highlighting:\n\n```csharp\n// This is a C# code example\npublic class CodeBlockExample\n{\n    private readonly ILogger<CodeBlockExample> _logger;\n    \n    public CodeBlockExample(ILogger<CodeBlockExample> logger)\n    {\n        _logger = logger;\n    }\n    \n    public async Task<IActionResult> ProcessAsync(string input)\n    {\n        try \n        {\n            // Check if input is valid\n            if (string.IsNullOrEmpty(input))\n            {\n                _logger.LogWarning("Empty input provided");\n                return new BadRequestResult();\n            }\n            \n            // Process the input\n            var result = await ComputeResultAsync(input);\n            \n            return new OkObjectResult(new { \n                Success = true,\n                Data = result,\n                ProcessedAt = DateTime.UtcNow\n            });\n        }\n        catch (Exception ex)\n        {\n            _logger.LogError(ex, "Error processing input");\n            return new StatusCodeResult(500);\n        }\n    }\n}\n```\n\nAnd here\'s some JavaScript code:\n\n```javascript\n// This is a JavaScript function\nfunction processData(data) {\n    // Validate input\n    if (!data || Object.keys(data).length === 0) {\n        console.warn("Empty data object provided");\n        return { error: "Invalid input" };\n    }\n    \n    // Transform the data\n    const result = data.items.map(item => {\n        return {\n            id: item.id,\n            name: item.name.toUpperCase(),\n            value: item.value * 2,\n            timestamp: new Date().toISOString()\n        };\n    });\n    \n    return { \n        success: true,\n        processedItems: result.length,\n        items: result\n    };\n}\n```',
+                    timestamp: new Date().toISOString(),
+                    isProcessing: false
+                };
+                displayMessage(testMessage);
+            }, 1000);
+            
+            // Add scroll event listener to handle image loading and ensure scroll works
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.addEventListener('scroll', handleScroll);
             
             // Add server select change event listener
             const serverSelect = document.getElementById('serverSelect');
@@ -573,7 +1253,22 @@
                 console.log("Server changed to:", currentServerName);
             });
             
-            sendMessageBtn.addEventListener('click', sendMessage);
+            // Add multiple event listeners to ensure the send button works
+            sendMessageBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("Send button clicked");
+                sendMessage();
+            });
+            
+            // Also add mousedown event which sometimes works better
+            sendMessageBtn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("Send button mousedown");
+                sendMessage();
+            });
+            
             messageInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -801,13 +1496,55 @@
 
         // Scroll to the bottom of the chat container
         function scrollToLatestMessage() {
-            // Use setTimeout to ensure this runs after the DOM has been updated
+            // Fix the chat messages reference first to make sure we have the right element
+            const chatContainer = document.getElementById('chatContainer');
+            
+            // Debug info
+            console.log("Scrolling to latest message");
+            console.log("Chat container:", chatContainer);
+            console.log("Chat container height:", chatContainer.scrollHeight);
+            
+            // Use a more robust approach with multiple attempts to ensure scrolling works
             setTimeout(() => {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                // First attempt immediately
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                console.log("Scroll attempt 1");
+                
+                // Try again after a short delay to ensure everything is rendered
+                setTimeout(() => {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                    console.log("Scroll attempt 2");
+                }, 100);
+                
+                // One final attempt for any delayed rendering
+                setTimeout(() => {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                    console.log("Scroll attempt 3");
+                    
+                    // Force one more scroll attempt after all images might have loaded
+                    const allImages = chatContainer.querySelectorAll('img');
+                    if (allImages.length > 0) {
+                        console.log(`Found ${allImages.length} images, adding load handlers`);
+                    }
+                }, 500);
+                
+                // Super extra final scroll for any very delayed content
+                setTimeout(() => {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                    console.log("Final scroll attempt");
+                }, 1000);
             }, 0);
         }
         
         function renderMessages() {
+            // Get the chat messages container, creating it if needed
+            let chatMessages = document.getElementById('chatMessages');
+            if (!chatMessages) {
+                initChatContainer();
+                chatMessages = document.getElementById('chatMessages');
+                console.log("Created chatMessages in renderMessages");
+            }
+            
             chatMessages.innerHTML = '';
             
             if (messages.length === 0) {
@@ -847,11 +1584,94 @@
                     `;
                 } else {
                     const formattedContent = formatMessage(message.content);
+                    const messageContentDiv = document.createElement('div');
+                    messageContentDiv.className = 'message-content';
+                    messageContentDiv.innerHTML = formattedContent;
                     
-                    messageElement.innerHTML = `
-                        <div class="message-content">${formattedContent}</div>
-                        <div class="message-time">${time}</div>
-                    `;
+                    // Process interactive elements to make them clickable
+                    processInteractiveElements(messageContentDiv);
+                    
+                    // Process code blocks for syntax highlighting
+                    const codeBlocks = messageContentDiv.querySelectorAll('pre code');
+                    codeBlocks.forEach(codeBlock => {
+                        const pre = codeBlock.parentElement;
+                        
+                        // Add copy button if it doesn't exist
+                        if (!pre.querySelector('.copy-button')) {
+                            const copyButton = document.createElement('button');
+                            copyButton.className = 'copy-button';
+                            copyButton.innerHTML = '<i class="fas fa-copy"></i>';
+                            copyButton.title = 'Copy to clipboard';
+                            pre.appendChild(copyButton);
+                        }
+                    });
+                    
+                    // Process any images in HTML content to make them expandable
+                    const contentImages = messageContentDiv.querySelectorAll('img:not(.image-thumbnail):not(.tool-result-thumbnail)');
+                    contentImages.forEach(img => {
+                        // Add styling class first
+                        img.classList.add('embedded-content-image');
+                        
+                        // Always set dimensions to ensure proper display
+                        img.style.maxWidth = '100%';
+                        img.style.height = 'auto';
+                        img.style.display = 'inline-block';
+                        img.setAttribute('loading', 'eager'); // Force eager loading
+                        
+                        // Set error handler to show broken image indication
+                        img.onerror = function() {
+                            console.error("Image failed to load:", this.src);
+                            this.style.display = 'none';
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'image-error';
+                            errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Image could not be loaded`;
+                            this.parentNode.insertBefore(errorDiv, this.nextSibling);
+                        };
+                        
+                        // Ensure the image has proper src attribute
+                        if (img.getAttribute('src')) {
+                            // Fix common issues with image paths
+                            if (!img.src.startsWith('data:') && !img.src.startsWith('http') && !img.src.startsWith('blob:')) {
+                                // If it's a relative URL, convert to absolute
+                                if (img.src.startsWith('/')) {
+                                    console.log("Converting relative image path to absolute:", img.src);
+                                    img.src = window.location.origin + img.src;
+                                } else if (!img.src.includes('/')) {
+                                    // Handle case where image might be in the same directory
+                                    console.log("Adding base path to image:", img.src);
+                                    img.src = window.location.origin + window.location.pathname + '/' + img.src;
+                                }
+                            }
+                            
+                            // For HTTP/HTTPS images, try to force a reload to handle cached broken images
+                            if (img.src.startsWith('http')) {
+                                // Add cache-busting parameter for external images
+                                img.src = img.src + (img.src.includes('?') ? '&' : '?') + '_t=' + new Date().getTime();
+                            }
+                        }
+                        
+                        // Add click handler to open image viewer
+                        img.addEventListener('click', () => {
+                            openImageViewer(img.src);
+                        });
+                        
+                        // Add loading event handler to scroll
+                        img.addEventListener('load', () => {
+                            console.log("Image loaded:", img.src);
+                            if (isAtBottom) {
+                                scrollToLatestMessage();
+                            }
+                        });
+                    });
+                    
+                    messageElement.appendChild(messageContentDiv);
+                    
+                    // Add timestamp
+                    const timeDiv = document.createElement('div');
+                    timeDiv.className = 'message-time';
+                    timeDiv.textContent = time;
+                    messageElement.appendChild(timeDiv);
+                    
                     // Handle media attachments (images)
                     if (message.mediaUrl && message.mediaType && message.mediaType.startsWith('image/')) {
                         const imgContainer = document.createElement('div');
@@ -887,41 +1707,205 @@
                     // Handle tool execution results with images
                     if (message.toolResults && Array.isArray(message.toolResults)) {
                         message.toolResults.forEach(result => {
-                            if (result.imageUrl) {
-                                const toolResultContainer = document.createElement('div');
-                                toolResultContainer.className = 'tool-result-container mt-2';
-                                
-                                toolResultContainer.innerHTML = `
-                                    <div class="tool-result-header">
+                            const toolResultContainer = document.createElement('div');
+                            toolResultContainer.className = 'tool-result-container mt-2';
+                            
+                            // Common header for all tool results
+                            let headerContent = `
+                                <div class="tool-result-header">
+                                    <div class="d-flex align-items-center">
                                         <i class="fas fa-tools me-2"></i>
-                                        <span>Tool Result</span>
+                                        <span>Tool Execution Result</span>
                                     </div>
-                                    <div class="tool-image-container">
-                                        <img src="${result.imageUrl}" alt="Tool Result" class="tool-result-thumbnail">
-                                        <div class="image-overlay">
-                                            <button class="btn btn-sm btn-light image-expand-btn" aria-label="View full image">
-                                                <i class="fas fa-search-plus"></i>
-                                            </button>
+                                    <div class="tool-result-view-toggles">
+                                        <button class="view-toggle-btn active" data-view="json">
+                                            <i class="fas fa-code fa-sm"></i> JSON
+                                        </button>
+                                        <button class="view-toggle-btn" data-view="tree">
+                                            <i class="fas fa-sitemap fa-sm"></i> Tree
+                                        </button>
+                                        <button class="view-toggle-btn" data-view="table">
+                                            <i class="fas fa-table fa-sm"></i> Table
+                                        </button>
+                                    </div>
+                                </div>`;
+                            
+                            // Different content based on result type
+                            let bodyContent = '';
+                            let footerContent = `
+                                <div class="tool-result-footer">
+                                    <button class="tool-result-footer-close">
+                                        <i class="fas fa-times-circle"></i> Close
+                                    </button>
+                                </div>`;
+                            
+                            // Handle image results
+                            if (result.imageUrl) {
+                                bodyContent = `
+                                    <div class="tool-result-content">
+                                        <div class="tool-image-container">
+                                            <img src="${result.imageUrl}" alt="Tool Result" class="tool-result-thumbnail">
+                                            <div class="image-overlay">
+                                                <button class="btn btn-sm btn-light image-expand-btn" aria-label="View full image">
+                                                    <i class="fas fa-search-plus"></i>
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                `;
+                                    </div>`;
+                            } 
+                            // Handle text/JSON results
+                            else if (result.content) {
+                                const contentObj = typeof result.content === 'object' 
+                                    ? result.content 
+                                    : typeof result.content === 'string' && result.content.trim().startsWith('{')
+                                        ? JSON.parse(result.content)
+                                        : { data: result.content };
+                                        
+                                const formattedJson = JSON.stringify(contentObj, null, 2);
+                                
+                                bodyContent = `
+                                    <div class="tool-result-content">
+                                        <!-- JSON View (default active) -->
+                                        <div class="tool-result-view json-view active" data-view="json">
+                                            <pre class="tool-result-text">${formattedJson}</pre>
+                                        </div>
+                                        
+                                        <!-- Tree View -->
+                                        <div class="tool-result-view tree-view" data-view="tree" id="tree-view-${Date.now()}">
+                                            <!-- Will be populated via JavaScript -->
+                                        </div>
+                                        
+                                        <!-- Table View -->
+                                        <div class="tool-result-view table-view" data-view="table" id="table-view-${Date.now()}">
+                                            <!-- Will be populated via JavaScript -->
+                                        </div>
+                                    </div>`;
+                            }
+                            // Handle plain result with just a result property
+                            else if (result.result) {
+                                // Try to parse as JSON if it looks like JSON
+                                let resultObj;
+                                try {
+                                    if (typeof result.result === 'string' && (result.result.trim().startsWith('{') || result.result.trim().startsWith('['))) {
+                                        resultObj = JSON.parse(result.result);
+                                    } else {
+                                        resultObj = { data: result.result };
+                                    }
+                                } catch (e) {
+                                    resultObj = { data: result.result };
+                                }
+                                
+                                const formattedJson = JSON.stringify(resultObj, null, 2);
+                                
+                                bodyContent = `
+                                    <div class="tool-result-content">
+                                        <!-- JSON View (default active) -->
+                                        <div class="tool-result-view json-view active" data-view="json">
+                                            <pre class="tool-result-text">${formattedJson}</pre>
+                                        </div>
+                                        
+                                        <!-- Tree View -->
+                                        <div class="tool-result-view tree-view" data-view="tree" id="tree-view-${Date.now()}">
+                                            <!-- Will be populated via JavaScript -->
+                                        </div>
+                                        
+                                        <!-- Table View -->
+                                        <div class="tool-result-view table-view" data-view="table" id="table-view-${Date.now()}">
+                                            <!-- Will be populated via JavaScript -->
+                                        </div>
+                                    </div>`;
+                            }
+                            // Fallback for any other structure
+                            else {
+                                const resultJson = JSON.stringify(result, null, 2);
+                                
+                                bodyContent = `
+                                    <div class="tool-result-content">
+                                        <!-- JSON View (default active) -->
+                                        <div class="tool-result-view json-view active" data-view="json">
+                                            <pre class="tool-result-text">${resultJson}</pre>
+                                        </div>
+                                        
+                                        <!-- Tree View -->
+                                        <div class="tool-result-view tree-view" data-view="tree" id="tree-view-${Date.now()}">
+                                            <!-- Will be populated via JavaScript -->
+                                        </div>
+                                        
+                                        <!-- Table View -->
+                                        <div class="tool-result-view table-view" data-view="table" id="table-view-${Date.now()}">
+                                            <!-- Will be populated via JavaScript -->
+                                        </div>
+                                    </div>`;
+                            }
+                            
+                            toolResultContainer.innerHTML = headerContent + bodyContent + footerContent;
                                 
                                 messageElement.appendChild(toolResultContainer);
                                 
-                                // Add click listener for tool result image
+                                // Add click listener for image-specific elements if present
                                 const expandBtn = toolResultContainer.querySelector('.image-expand-btn');
-                                expandBtn.addEventListener('click', () => {
-                                    openImageViewer(result.imageUrl);
-                                });
+                                if (expandBtn) {
+                                    expandBtn.addEventListener('click', () => {
+                                        openImageViewer(result.imageUrl);
+                                    });
+                                }
                                 
                                 const thumbnail = toolResultContainer.querySelector('.tool-result-thumbnail');
-                                thumbnail.addEventListener('click', () => {
-                                    openImageViewer(result.imageUrl);
+                                if (thumbnail) {
+                                    thumbnail.addEventListener('click', () => {
+                                        openImageViewer(result.imageUrl);
+                                    });
+                                }
+                                
+                                // Add animation for smooth appearance
+                                setTimeout(() => {
+                                    toolResultContainer.classList.add('tool-result-visible');
+                                }, 10);
+                                
+                                // Set up view switching functionality
+                                const viewToggleBtns = toolResultContainer.querySelectorAll('.view-toggle-btn');
+                                const resultViews = toolResultContainer.querySelectorAll('.tool-result-view');
+                                
+                                viewToggleBtns.forEach(btn => {
+                                    btn.addEventListener('click', () => {
+                                        // Remove active class from all buttons and views
+                                        viewToggleBtns.forEach(b => b.classList.remove('active'));
+                                        resultViews.forEach(v => v.classList.remove('active'));
+                                        
+                                        // Add active class to clicked button
+                                        btn.classList.add('active');
+                                        
+                                        // Show corresponding view
+                                        const viewName = btn.getAttribute('data-view');
+                                        const viewToShow = toolResultContainer.querySelector(`.tool-result-view[data-view="${viewName}"]`);
+                                        if (viewToShow) {
+                                            viewToShow.classList.add('active');
+                                            viewToShow.style.display = 'block';
+                                            
+                                            // Generate content for tree or table view if needed
+                                            if (viewName === 'tree' && !viewToShow.querySelector('.tree-content')) {
+                                                generateTreeView(viewToShow, result);
+                                            } else if (viewName === 'table' && !viewToShow.querySelector('table')) {
+                                                generateTableView(viewToShow, result);
+                                            }
+                                        }
+                                    });
                                 });
-                            }
-                        });
+                                
+                                // Add click listener for footer close button
+                                const footerCloseBtn = toolResultContainer.querySelector('.tool-result-footer-close');
+                                footerCloseBtn.addEventListener('click', () => {
+                                    // Add a fade-out animation
+                                    toolResultContainer.classList.add('tool-result-hiding');
+                                    setTimeout(() => {
+                                        toolResultContainer.style.display = 'none';
+                                        // Optional: completely remove from DOM
+                                        // toolResultContainer.remove();
+                                    }, 300); // Match the animation duration
+                                });
+                            });
+                        }
                     }
-                }
                 
                 chatMessages.appendChild(messageElement);
             });
@@ -930,12 +1914,264 @@
             scrollToLatestMessage();
         }
         
+        // Process interactive elements in a message content div to ensure they're clickable
+        function processInteractiveElements(contentDiv) {
+            // Process tables for better interaction
+            const tables = contentDiv.querySelectorAll('table');
+            tables.forEach(table => {
+                // If table is not already in a wrapper, wrap it
+                if (!table.closest('.table-wrapper')) {
+                    // Create a wrapper div
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'table-wrapper';
+                    
+                    // Create a container for horizontal scrolling
+                    const container = document.createElement('div');
+                    container.className = 'table-container';
+                    
+                    // Replace the table with our enhanced structure
+                    const parent = table.parentNode;
+                    parent.insertBefore(wrapper, table);
+                    container.appendChild(table);
+                    wrapper.appendChild(container);
+                }
+                
+                // Process images within tables to ensure proper sizing and display
+                const tableImages = table.querySelectorAll('img');
+                tableImages.forEach(img => {
+                    img.classList.add('embedded-content-image');
+                    img.style.maxHeight = '200px';
+                    img.style.objectFit = 'contain';
+                    
+                    // Add same error and click handlers as regular images
+                    img.onerror = function() {
+                        console.error("Table image failed to load:", this.src);
+                        this.style.display = 'none';
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'image-error';
+                        errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Image could not be loaded`;
+                        this.parentNode.insertBefore(errorDiv, this.nextSibling);
+                    };
+                    
+                    img.addEventListener('click', () => {
+                        openImageViewer(img.src);
+                    });
+                });
+                
+                // Add classes to make tables more interactive
+                table.classList.add('table', 'table-responsive');
+                
+                // Add click events to rows if needed
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    row.classList.add('clickable-row');
+                    row.style.cursor = 'pointer';
+                    // Ensure rows are clickable with proper z-index
+                    row.style.position = 'relative';
+                    row.style.zIndex = '5';
+                    // Add explicit pointer-events
+                    row.style.pointerEvents = 'auto';
+                });
+            });
+            
+            // Ensure links are properly clickable
+            const links = contentDiv.querySelectorAll('a');
+            links.forEach(link => {
+                link.classList.add('clickable');
+                link.setAttribute('target', '_blank'); // Open links in new tab
+                link.setAttribute('rel', 'noopener noreferrer'); // Security best practice
+                // Enhance link clickability
+                link.style.position = 'relative';
+                link.style.zIndex = '5';
+                link.style.pointerEvents = 'auto';
+                
+                // Add click event to handle properly
+                link.addEventListener('click', (e) => {
+                    // Prevent default only if needed
+                    if (!link.href) {
+                        e.preventDefault();
+                    }
+                    // Otherwise let the browser handle the link normally
+                });
+            });
+            
+            // Process buttons or button-like elements
+            const buttons = contentDiv.querySelectorAll('button, [role="button"]');
+            buttons.forEach(button => {
+                button.classList.add('clickable');
+                // Enhance button clickability
+                button.style.position = 'relative';
+                button.style.zIndex = '5';
+                button.style.pointerEvents = 'auto';
+                
+                // Ensure click events propagate correctly
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent parent elements from capturing the click
+                });
+            });
+            
+            // Process all interactive elements to ensure they're clickable
+            const interactives = contentDiv.querySelectorAll('input, select, textarea, button, a');
+            interactives.forEach(el => {
+                el.style.position = 'relative';
+                el.style.zIndex = '5';
+                el.style.pointerEvents = 'auto';
+            });
+            
+            return contentDiv;
+        }
+        
         function formatMessage(content) {
             if (!content) return '';
-            let formatted = content.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+            
+            // Check if content already contains HTML tags
+            const containsHtml = /<[a-z][\s\S]*>/i.test(content);
+            
+            // If content already has HTML, process tables and handle line breaks
+            if (containsHtml) {
+                // First convert line breaks but preserve existing HTML
+                let processedContent = content.replace(/\n/g, '<br>');
+                
+                // Use DOMParser to properly parse all HTML content
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(processedContent, 'text/html');
+                
+                // Fix all images in the HTML content
+                const images = doc.querySelectorAll('img');
+                images.forEach(img => {
+                    img.classList.add('embedded-content-image');
+                    img.setAttribute('loading', 'eager');
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    img.style.display = 'block';
+                    img.style.margin = '10px 0';
+                });
+                
+                // Process HTML tables to make them more responsive
+                if (processedContent.includes('<table')) {
+                    // Find all tables and wrap them in a container for scrolling
+                    const tables = doc.querySelectorAll('table');
+                    tables.forEach(table => {
+                        // Create a wrapper div
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'table-wrapper';
+                        
+                        // Create a container for horizontal scrolling
+                        const container = document.createElement('div');
+                        container.className = 'table-container';
+                        
+                        // Clone the table to insert it into our wrapper
+                        const tableClone = table.cloneNode(true);
+                        
+                        // Replace the table with our enhanced structure
+                        container.appendChild(tableClone);
+                        wrapper.appendChild(container);
+                        table.parentNode.replaceChild(wrapper, table);
+                    });
+                    
+                    // Convert back to string
+                    processedContent = doc.body.innerHTML;
+                }
+                
+                return processedContent;
+            }
+            
+            // Otherwise apply standard markdown-to-HTML conversion
+            // First process code blocks with syntax highlighting
+            let formatted = content.replace(/```([a-z]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+                const language = lang || 'none';
+                const escapedCode = code
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+                
+                // Apply basic syntax highlighting
+                let highlightedCode = escapedCode;
+                
+                // Add language-specific highlighting
+                if (language === 'csharp' || language === 'cs') {
+                    // Highlight C# keywords
+                    const keywords = ['using', 'namespace', 'class', 'public', 'private', 'protected', 'internal', 
+                                    'static', 'void', 'return', 'if', 'else', 'for', 'foreach', 'while', 'do', 
+                                    'switch', 'case', 'break', 'continue', 'new', 'try', 'catch', 'finally', 
+                                    'throw', 'this', 'base', 'var', 'bool', 'string', 'int', 'float', 'double', 
+                                    'async', 'await', 'Task', 'virtual', 'override', 'abstract', 'interface', 
+                                    'true', 'false', 'null'];
+                    
+                    // Apply keyword highlighting
+                    keywords.forEach(keyword => {
+                        const regex = new RegExp(`\\b${keyword}\\b`, 'g');
+                        highlightedCode = highlightedCode.replace(regex, `<span class="keyword">${keyword}</span>`);
+                    });
+                    
+                    // Highlight strings
+                    highlightedCode = highlightedCode.replace(/(".*?")/g, '<span class="string">$1</span>');
+                    
+                    // Highlight comments
+                    highlightedCode = highlightedCode.replace(/(\/\/.*$)/gm, '<span class="comment">$1</span>');
+                    
+                    // Highlight multiline comments
+                    highlightedCode = highlightedCode.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="comment">$1</span>');
+                }
+                
+                return `<pre data-language="${language}" class="language-${language}"><code>${highlightedCode}</code><button class="copy-button" title="Copy to clipboard"><i class="fas fa-copy"></i></button></pre>`;
+            });
+            
+            // Process regular code blocks without language specification
+            formatted = formatted.replace(/```([^`]+)```/g, '<pre data-language="text"><code>$1</code><button class="copy-button" title="Copy to clipboard"><i class="fas fa-copy"></i></button></pre>');
+            
+            // Process inline code
             formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Bold and italic formatting
             formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
             formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            
+            // Process image markdown ![alt](url)
+            formatted = formatted.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="embedded-content-image" loading="eager" style="max-width:100%; height:auto; display:block;">');
+            
+            // Process URLs to images ending with image extensions (not already in markdown format)
+            const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
+            imageExtensions.forEach(ext => {
+                const regex = new RegExp(`(https?:\\/\\/[^\\s]+\\.${ext})(?![^<]*>)`, 'gi');
+                formatted = formatted.replace(regex, '<img src="$1" class="embedded-content-image" loading="eager" style="max-width:100%; height:auto; display:block;">');
+            });
+            
+            // Simple markdown table detection and formatting
+            // Look for patterns like: | Header1 | Header2 |\n|-------|----------|
+            const tableRegex = /\|(.+)\|\n\|([\-\|]+)\|\n((?:\|.+\|\n?)+)/g;
+            formatted = formatted.replace(tableRegex, (match, headerRow, separatorRow, bodyRows) => {
+                // Process headers
+                const headers = headerRow.split('|').map(header => header.trim()).filter(Boolean);
+                
+                // Process body rows
+                const rows = bodyRows.split('\n').filter(row => row.includes('|'));
+                
+                // Build HTML table
+                let tableHtml = '<div class="table-wrapper"><div class="table-container"><table>';
+                
+                // Add header
+                tableHtml += '<thead><tr>';
+                headers.forEach(header => {
+                    tableHtml += `<th>${header}</th>`;
+                });
+                tableHtml += '</tr></thead>';
+                
+                // Add body
+                tableHtml += '<tbody>';
+                rows.forEach(row => {
+                    const cells = row.split('|').map(cell => cell.trim()).filter(Boolean);
+                    tableHtml += '<tr>';
+                    cells.forEach(cell => {
+                        tableHtml += `<td>${cell}</td>`;
+                    });
+                    tableHtml += '</tr>';
+                });
+                tableHtml += '</tbody></table></div></div>';
+                
+                return tableHtml;
+            });
+            
             formatted = formatted.replace(/\n/g, '<br>');
             return formatted;
         }
@@ -973,6 +2209,362 @@
             
             modalImg.src = imageUrl;
             modal.style.display = 'flex';
+        }
+        
+        // Initialize code block functionality - copy buttons and syntax highlighting
+        function initCodeBlockHandlers() {
+            // Set up event delegation for copy buttons
+            document.addEventListener('click', function(e) {
+                // Check if the clicked element is a copy button or its child
+                const copyButton = e.target.closest('.copy-button');
+                if (copyButton) {
+                    e.stopPropagation();
+                    const pre = copyButton.closest('pre');
+                    const code = pre.querySelector('code');
+                    const textToCopy = code ? code.innerText : pre.innerText;
+                    
+                    navigator.clipboard.writeText(textToCopy)
+                        .then(() => {
+                            // Visual feedback on successful copy
+                            const originalHTML = copyButton.innerHTML;
+                            copyButton.innerHTML = '<i class="fas fa-check"></i>';
+                            setTimeout(() => {
+                                copyButton.innerHTML = originalHTML;
+                            }, 2000);
+                        })
+                        .catch(err => {
+                            console.error('Failed to copy text: ', err);
+                        });
+                }
+            });
+        }
+        
+        // Generate tree view for JSON data
+        function generateTreeView(container, result) {
+            let data;
+            
+            // Extract the data based on result type
+            if (result.content) {
+                data = typeof result.content === 'object' 
+                    ? result.content 
+                    : tryParseJson(result.content) || { data: result.content };
+            } else if (result.result) {
+                data = tryParseJson(result.result) || { data: result.result };
+            } else {
+                data = result;
+            }
+            
+            // Create tree view content
+            const treeContent = document.createElement('div');
+            treeContent.className = 'tree-content';
+            
+            // Create root tree element
+            const rootUl = document.createElement('ul');
+            buildTreeNodes(rootUl, data);
+            treeContent.appendChild(rootUl);
+            
+            // Clear container and append tree
+            container.innerHTML = '';
+            container.appendChild(treeContent);
+            
+            // Add click handlers for expandable items
+            addTreeExpandHandlers(container);
+        }
+        
+        // Helper to build tree nodes recursively
+        function buildTreeNodes(parentElement, data, path = '') {
+            if (Array.isArray(data)) {
+                // Handle arrays
+                data.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'tree-item';
+                    const currentPath = path ? `${path}[${index}]` : `[${index}]`;
+                    
+                    if (typeof item === 'object' && item !== null) {
+                        li.innerHTML = `<span class="tree-expander">▶</span><span class="tree-key">[${index}]</span>`;
+                        const subUl = document.createElement('ul');
+                        subUl.style.display = 'none'; // Initially collapsed
+                        buildTreeNodes(subUl, item, currentPath);
+                        li.appendChild(subUl);
+                    } else {
+                        li.innerHTML = `<span class="tree-key">[${index}]:</span> <span class="tree-value">${formatTreeValue(item)}</span>`;
+                    }
+                    
+                    parentElement.appendChild(li);
+                });
+            } else if (typeof data === 'object' && data !== null) {
+                // Handle objects
+                for (const key in data) {
+                    if (data.hasOwnProperty(key)) {
+                        const value = data[key];
+                        const li = document.createElement('li');
+                        li.className = 'tree-item';
+                        const currentPath = path ? `${path}.${key}` : key;
+                        
+                        if (typeof value === 'object' && value !== null) {
+                            li.innerHTML = `<span class="tree-expander">▶</span><span class="tree-key">${key}</span>`;
+                            const subUl = document.createElement('ul');
+                            subUl.style.display = 'none'; // Initially collapsed
+                            buildTreeNodes(subUl, value, currentPath);
+                            li.appendChild(subUl);
+                        } else {
+                            li.innerHTML = `<span class="tree-key">${key}:</span> <span class="tree-value">${formatTreeValue(value)}</span>`;
+                        }
+                        
+                        parentElement.appendChild(li);
+                    }
+                }
+            } else {
+                // Handle primitive values (shouldn't normally reach here)
+                const li = document.createElement('li');
+                li.className = 'tree-item';
+                li.innerHTML = `<span class="tree-value">${formatTreeValue(data)}</span>`;
+                parentElement.appendChild(li);
+            }
+        }
+        
+        // Add click handlers for tree expanders
+        function addTreeExpandHandlers(container) {
+            const expanders = container.querySelectorAll('.tree-expander');
+            expanders.forEach(expander => {
+                expander.addEventListener('click', () => {
+                    // Toggle expanded/collapsed state
+                    const isExpanded = expander.textContent === '▼';
+                    expander.textContent = isExpanded ? '▶' : '▼';
+                    
+                    // Toggle visibility of child list
+                    const childList = expander.parentElement.querySelector('ul');
+                    if (childList) {
+                        childList.style.display = isExpanded ? 'none' : 'block';
+                    }
+                });
+            });
+        }
+        
+        // Format tree values based on type
+        function formatTreeValue(value) {
+            if (value === null) return '<span style="color:#999">null</span>';
+            if (value === undefined) return '<span style="color:#999">undefined</span>';
+            if (typeof value === 'string') return `<span style="color:#c41a16">"${escapeHtml(value)}"</span>`;
+            if (typeof value === 'number') return `<span style="color:#1c00cf">${value}</span>`;
+            if (typeof value === 'boolean') return `<span style="color:#aa0d91">${value}</span>`;
+            return escapeHtml(String(value));
+        }
+        
+        // Generate table view for JSON data
+        function generateTableView(container, result) {
+            let data;
+            
+            // Extract the data based on result type
+            if (result.content) {
+                data = typeof result.content === 'object' 
+                    ? result.content 
+                    : tryParseJson(result.content) || { data: result.content };
+            } else if (result.result) {
+                data = tryParseJson(result.result) || { data: result.result };
+            } else {
+                data = result;
+            }
+            
+            // Create table content wrapper
+            const tableWrapper = document.createElement('div');
+            tableWrapper.className = 'table-wrapper';
+            
+            if (Array.isArray(data)) {
+                // Array data - create table from array elements
+                const headers = getArrayObjectHeaders(data);
+                if (headers.length > 0) {
+                    // If array of objects, create a table with columns
+                    const table = createTableFromArrayOfObjects(data, headers);
+                    tableWrapper.appendChild(table);
+                } else {
+                    // Simple array, create key-value pairs
+                    const table = createKeyValueTable(data);
+                    tableWrapper.appendChild(table);
+                }
+            } else if (typeof data === 'object' && data !== null) {
+                // Object data - create key-value table
+                const table = createKeyValueTable(data);
+                tableWrapper.appendChild(table);
+            } else {
+                // Simple value - create simple table
+                const table = document.createElement('table');
+                table.innerHTML = `
+                    <tr>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>${escapeHtml(String(data))}</td>
+                    </tr>
+                `;
+                tableWrapper.appendChild(table);
+            }
+            
+            // Clear container and append table
+            container.innerHTML = '';
+            container.appendChild(tableWrapper);
+        }
+        
+        // Get column headers from an array of objects
+        function getArrayObjectHeaders(array) {
+            if (!array || array.length === 0 || typeof array[0] !== 'object') {
+                return [];
+            }
+            
+            // Get all unique keys from all objects in the array
+            const headers = new Set();
+            array.forEach(item => {
+                if (item && typeof item === 'object') {
+                    Object.keys(item).forEach(key => headers.add(key));
+                }
+            });
+            
+            return [...headers];
+        }
+        
+        // Create a table from an array of objects
+        function createTableFromArrayOfObjects(array, headers) {
+            const table = document.createElement('table');
+            
+            // Create header row
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            // Add index column
+            const indexHeader = document.createElement('th');
+            indexHeader.textContent = 'Index';
+            headerRow.appendChild(indexHeader);
+            
+            // Add data columns
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Create data rows
+            const tbody = document.createElement('tbody');
+            array.forEach((item, index) => {
+                const row = document.createElement('tr');
+                
+                // Add index cell
+                const indexCell = document.createElement('td');
+                indexCell.textContent = index;
+                row.appendChild(indexCell);
+                
+                // Add data cells
+                headers.forEach(header => {
+                    const cell = document.createElement('td');
+                    const value = item[header];
+                    
+                    if (typeof value === 'object' && value !== null) {
+                        cell.textContent = JSON.stringify(value);
+                    } else if (value === undefined) {
+                        cell.textContent = '';
+                    } else {
+                        cell.textContent = value;
+                    }
+                    
+                    row.appendChild(cell);
+                });
+                
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            return table;
+        }
+        
+        // Create a key-value table for objects
+        function createKeyValueTable(data) {
+            const table = document.createElement('table');
+            
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            ['Key', 'Value'].forEach(text => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Create body
+            const tbody = document.createElement('tbody');
+            
+            if (Array.isArray(data)) {
+                // For arrays
+                data.forEach((value, index) => {
+                    const row = document.createElement('tr');
+                    
+                    // Key cell
+                    const keyCell = document.createElement('td');
+                    keyCell.textContent = index;
+                    row.appendChild(keyCell);
+                    
+                    // Value cell
+                    const valueCell = document.createElement('td');
+                    if (typeof value === 'object' && value !== null) {
+                        valueCell.textContent = JSON.stringify(value);
+                    } else {
+                        valueCell.textContent = value;
+                    }
+                    row.appendChild(valueCell);
+                    
+                    tbody.appendChild(row);
+                });
+            } else {
+                // For objects
+                for (const key in data) {
+                    if (data.hasOwnProperty(key)) {
+                        const row = document.createElement('tr');
+                        
+                        // Key cell
+                        const keyCell = document.createElement('td');
+                        keyCell.textContent = key;
+                        row.appendChild(keyCell);
+                        
+                        // Value cell
+                        const valueCell = document.createElement('td');
+                        const value = data[key];
+                        if (typeof value === 'object' && value !== null) {
+                            valueCell.textContent = JSON.stringify(value);
+                        } else {
+                            valueCell.textContent = value;
+                        }
+                        row.appendChild(valueCell);
+                        
+                        tbody.appendChild(row);
+                    }
+                }
+            }
+            
+            table.appendChild(tbody);
+            return table;
+        }
+        
+        // Helper function to safely try parsing JSON
+        function tryParseJson(str) {
+            if (typeof str !== 'string') return null;
+            try {
+                return JSON.parse(str);
+            } catch (e) {
+                return null;
+            }
+        }
+        
+        // Helper function to escape HTML
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
         
         // Toggle send button loading state
@@ -1053,7 +2645,10 @@
         
         // Suggestion functions
         function fetchSuggestions() {
-            fetch('@Url.Action("GetSuggestions", "Chat")')
+            // Get the selected server name
+            const serverName = currentServerName || document.getElementById('serverSelect').value;
+            
+            fetch(`@Url.Action("GetSuggestions", "Chat")?serverName=${encodeURIComponent(serverName)}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Failed to fetch suggestions');
@@ -1061,22 +2656,29 @@
                     return response.json();
                 })
                 .then(suggestions => {
+                    // Always show suggestions area with either real suggestions or empty state
                     if (Array.isArray(suggestions) && suggestions.length > 0) {
                         displaySuggestions(suggestions);
                     } else {
-                        hideSuggestionsContainer();
+                        showEmptySuggestionsState();
                     }
                 })
                 .catch(error => {
                     console.error('Error fetching suggestions:', error);
-                    hideSuggestionsContainer();
+                    showEmptySuggestionsState();
                 });
         }
         
         function displaySuggestions(suggestions) {
-            const suggestionsList = document.getElementById('suggestionsList');
-            suggestionsList.innerHTML = '';
+            if (!suggestions || !Array.isArray(suggestions) || suggestions.length === 0) {
+                showEmptySuggestionsState();
+                return;
+            }
             
+            const suggestionsList = document.getElementById('suggestionsList');
+            suggestionsList.innerHTML = ''; // Clear existing content
+            
+            // Add suggestion chips
             suggestions.forEach(suggestion => {
                 const chip = document.createElement('div');
                 chip.className = 'suggestion-chip';
@@ -1089,27 +2691,90 @@
                     document.getElementById('messageInput').value = this.dataset.text;
                     // Focus on the input
                     document.getElementById('messageInput').focus();
-                    // Hide the suggestions container after selection
-                    hideSuggestionsContainer();
-                    // Optionally, send the message immediately
-                    // sendMessage();
+                    // Clear suggestions but keep the heading
+                    showEmptySuggestionsState();
                 });
                 
                 suggestionsList.appendChild(chip);
             });
-            
-            // Show the suggestions container
-            document.getElementById('suggestionsContainer').style.display = 'block';
+        }
+        
+        function showEmptySuggestionsState() {
+            const suggestionsList = document.getElementById('suggestionsList');
+            suggestionsList.innerHTML = '<div class="suggestion-empty-state">No suggestions available</div>';
         }
         
         function hideSuggestionsContainer() {
-            document.getElementById('suggestionsContainer').style.display = 'none';
+            // Don't hide - just show empty state
+            showEmptySuggestionsState();
         }
         
         function clearSuggestions() {
-            const suggestionsList = document.getElementById('suggestionsList');
-            if (suggestionsList) {
-                suggestionsList.innerHTML = '';
+            showEmptySuggestionsState();
+        }
+        
+        // Track if we're at the bottom of the chat
+        let isAtBottom = true;
+        
+        // Initialize the chat container
+        function initChatContainer() {
+            const chatContainer = document.getElementById('chatContainer');
+            const chatMessagesDiv = document.getElementById('chatMessages');
+            
+            // Set the global reference for chatMessages
+            window.chatMessages = chatMessagesDiv;
+            
+            console.log("Chat container:", chatContainer);
+            console.log("Chat messages div:", chatMessagesDiv);
+            
+            // Add CSS to ensure proper scrolling
+            const style = document.createElement('style');
+            style.textContent = `
+                .chat-container {
+                    position: relative;
+                    overflow-y: auto !important;
+                    display: flex;
+                    flex-direction: column;
+                }
+                .chat-messages {
+                    padding: 10px;
+                    width: 100%;
+                    flex: 1;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            console.log("Chat container initialized");
+        }
+        
+        // Handle scroll events in chat container
+        function handleScroll() {
+            const chatContainer = document.getElementById('chatContainer');
+            
+            // Check if we're at the bottom (with a small threshold for rounding errors)
+            const scrollPosition = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight;
+            isAtBottom = scrollPosition < 20;
+            
+            console.log(`Scroll position: ${scrollPosition}, isAtBottom: ${isAtBottom}`);
+            
+            // If any images are loading, make sure we scroll to bottom when they finish
+            if (isAtBottom) {
+                const images = chatContainer.querySelectorAll('img');
+                images.forEach(img => {
+                    if (!img.complete) {
+                        img.onload = () => {
+                            if (isAtBottom) {
+                                chatContainer.scrollTop = chatContainer.scrollHeight;
+                                
+                                // Sometimes image dimensions can change after rendering
+                                // Try again after a brief delay
+                                setTimeout(() => {
+                                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                                }, 100);
+                            }
+                        };
+                    }
+                });
             }
         }
         

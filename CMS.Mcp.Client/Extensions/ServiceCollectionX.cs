@@ -76,7 +76,9 @@
         private static IServiceCollection AddServices(this IServiceCollection services)
         {
             return services
-                .AddSingleton<IAiAssistantService, AiAssistantService>()
+                .AddTransient<IAssistantService, AssistantService>()
+                .AddTransient<ISummaryService, SummaryService>()
+                .AddTransient<ISuggestionService, SuggestionService>()
                 .AddTransient<Func<string, IMcpToolService>>(sp => n => ActivatorUtilities.CreateInstance<McpToolService>(sp, n));
         }
 

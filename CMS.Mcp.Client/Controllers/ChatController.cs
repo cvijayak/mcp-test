@@ -13,12 +13,12 @@ namespace CMS.Mcp.Client.Controllers
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
-    using Org.BouncyCastle.Tls;
 
     [Authorize]
     [Route("mcp/chat")]
     public class ChatController(IChatMessageStore chatMessageStore,
-        IAiAssistantService aiAssistantService,
+        IAssistantService assistantService,
+        ISuggestionService suggestionService,
         Func<string, IMcpToolService> mcpToolServiceFactory,
         IOptions<ServerOptions> serverOptions,
         ILogger<ChatController> logger) : Controller
@@ -61,9 +61,9 @@ namespace CMS.Mcp.Client.Controllers
             try
             {
                 var toolService = GetMcpToolService(serverName);
-                await toolService.RegisterToolsAsync(cancellationToken);
+                await toolService.RegisterAsync(cancellationToken);
 
-                var response = await aiAssistantService.SendMessageAsync(message, serverName, cancellationToken);
+                var response = await assistantService.SendMessageAsync(message, serverName, cancellationToken);
                 return Json(response);
             }
             catch (Exception ex)
@@ -77,7 +77,7 @@ namespace CMS.Mcp.Client.Controllers
         [Route("ClearChat")]
         public IActionResult ClearChat()
         {
-            aiAssistantService.ClearChat();
+            assistantService.ClearMessages();
             return Json(new { success = true, message = "Chat cleared successfully" });
         }
 
@@ -97,7 +97,7 @@ namespace CMS.Mcp.Client.Controllers
         {
             var availableServers = _serverOptions.McpServers?.Select(s => s.Name).ToArray() ?? Array.Empty<string>();
             var toolService = GetMcpToolService(serverName);
-            var tools = await toolService.GetToolsAsync(cancellationToken);
+            var tools = await toolService.ListAsync(cancellationToken);
             
             ViewBag.ServerOptions = availableServers;
             ViewBag.SelectedServer = serverName;
@@ -120,7 +120,7 @@ namespace CMS.Mcp.Client.Controllers
             }
             
             var toolService = GetMcpToolService(serverNameToUse);
-            var result = await toolService.ExecuteToolAsync(toolNameToUse, paramDict.ToDictionary(x => x.Key, x => x.Value), cancellationToken);
+            var result = await toolService.ExecuteAsync(toolNameToUse, paramDict.ToDictionary(x => x.Key, x => x.Value), cancellationToken);
             return Json(result);
         }
         
@@ -144,12 +144,12 @@ namespace CMS.Mcp.Client.Controllers
         [HttpGet]
         [Authorize]
         [Route("GetSuggestions")]
-        public async Task<IActionResult> GetSuggestionsAsync(CancellationToken cancellationToken)
+        public async Task<IActionResult> GetSuggestionsAsync(string serverName, CancellationToken cancellationToken)
         {
             try
             {
-                var nameOfServer = _serverOptions.McpServers?.FirstOrDefault()?.Name;
-                var suggestions = (await aiAssistantService.GetSuggestionsAsync(nameOfServer, cancellationToken))
+                var nameOfServer = !string.IsNullOrEmpty(serverName) ? serverName : _serverOptions.McpServers?.FirstOrDefault()?.Name;
+                var suggestions = (await suggestionService.ListAsync(nameOfServer, cancellationToken))
                     .Select((s, i) => new ChatSuggestionViewModel
                     {
                         Id = i.ToString(),

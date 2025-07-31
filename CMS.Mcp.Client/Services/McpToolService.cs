@@ -26,7 +26,7 @@ namespace CMS.Mcp.Client.Services
             return mcpServer == null ? null : await mcpClientFactory(mcpServer, cancellationToken);
         }
 
-        public async Task<McpToolViewModel[]> GetToolsAsync(CancellationToken cancellationToken)
+        public async Task<McpToolViewModel[]> ListAsync(CancellationToken cancellationToken)
         {
             var client = await GetMcpClientAsync(cancellationToken);
             if (client == null)
@@ -55,7 +55,7 @@ namespace CMS.Mcp.Client.Services
             }));
         }
 
-        public async Task<JsonNode> ExecuteToolAsync(string toolName, Dictionary<string, object> parameters, CancellationToken cancellationToken)
+        public async Task<JsonNode> ExecuteAsync(string toolName, Dictionary<string, object> parameters, CancellationToken cancellationToken)
         {
             var client = await GetMcpClientAsync(cancellationToken);
             if (client == null)
@@ -77,7 +77,7 @@ namespace CMS.Mcp.Client.Services
             return JsonNode.Parse(text);
         }
 
-        public async Task RegisterToolsAsync(CancellationToken cancellationToken)
+        public async Task RegisterAsync(CancellationToken cancellationToken)
         {
             var client = await GetMcpClientAsync(cancellationToken);
             if (client == null)

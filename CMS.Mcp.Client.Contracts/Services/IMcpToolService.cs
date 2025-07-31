@@ -8,8 +8,8 @@ namespace CMS.Mcp.Client.Contracts.Services
 
     public interface IMcpToolService
     {
-        Task<McpToolViewModel[]> GetToolsAsync(CancellationToken cancellationToken);
-        Task<JsonNode> ExecuteToolAsync(string toolName, Dictionary<string, object> parameters, CancellationToken cancellationToken);
-        Task RegisterToolsAsync(CancellationToken cancellationToken);
+        Task<McpToolViewModel[]> ListAsync(CancellationToken cancellationToken);
+        Task<JsonNode> ExecuteAsync(string toolName, Dictionary<string, object> parameters, CancellationToken cancellationToken);
+        Task RegisterAsync(CancellationToken cancellationToken);
     }
 }
