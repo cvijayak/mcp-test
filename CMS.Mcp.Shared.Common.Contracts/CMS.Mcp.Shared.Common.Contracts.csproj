@@ -10,9 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Asp.Versioning.Abstractions" Version="8.1.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="MailKit" Version="4.9.0" />
   </ItemGroup>
 
 </Project>

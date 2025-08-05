@@ -1,31 +1,27 @@
 ﻿namespace CMS.Mcp.Client
 {
     using System;
-    using System.Collections.Generic;
+    using System.Net.Http;
     using System.Threading;
     using System.Threading.Tasks;
     using ModelContextProtocol.Client;
     using ModelContextProtocol.Protocol;
-    using Security.Contracts.Providers;
+    using Shared.Api.Clients.Contracts;
 
-    public class McpSseTransport(Uri endpoint, string name, ISessionProvider sessionProvider) : IClientTransport
+    public class McpSseTransport(Uri endpoint, string name, IHttpClientFactory httpClientFactory) : IClientTransport
     {
         public async Task<ITransport> ConnectAsync(CancellationToken cancellationToken) 
         {
-            var token = await sessionProvider.GetAccessTokenAsync();
-
-            var options = new SseClientTransportOptions 
+            var httpClientInstanceName = $"{HttpClientInstances.MCP_SERVER_HTTP_CLIENT_INSTANCE}.{name}";
+            var httpClient = httpClientFactory.CreateClient(httpClientInstanceName);
+            var transportOptions = new SseClientTransportOptions 
             {
                 Endpoint = endpoint,
                 Name = name,
-                ConnectionTimeout = TimeSpan.FromSeconds(60),
-                AdditionalHeaders = new Dictionary<string, string>
-                {
-                    { "Authorization", $"Bearer {token}" }
-                }
+                ConnectionTimeout = TimeSpan.FromSeconds(60)
             };
 
-            var sseTransport = new SseClientTransport(options);
+            var sseTransport = new SseClientTransport(transportOptions: transportOptions, httpClient: httpClient);
             return await sseTransport.ConnectAsync(cancellationToken);
         }
 

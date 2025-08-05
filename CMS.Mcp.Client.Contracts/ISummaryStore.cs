@@ -1,8 +1,11 @@
 namespace CMS.Mcp.Client.Contracts
 {
+    using System.Threading.Tasks;
+
     public interface ISummaryStore
     {
-        string Get();
-        string Add(string summary);
+        Task<string> GetAsync();
+        Task<string> AddAsync(string summary);
+        Task ClearAsync();
     }
 }

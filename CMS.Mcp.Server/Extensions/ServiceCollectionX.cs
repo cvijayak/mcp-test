@@ -7,6 +7,7 @@
     using Microsoft.AspNetCore.Authentication.JwtBearer;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
     using Microsoft.IdentityModel.Tokens;
     using ModelContextProtocol.AspNetCore.Authentication;
     using Monkey;
@@ -50,17 +51,25 @@
                     {
                         OnTokenValidated = context =>
                         {
-                            Console.WriteLine($"Token validated, Token : {context.SecurityToken.ToJson()}");
+                            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
+
+                            logger.LogInformation($"Token validated, Token : {context.SecurityToken.ToJson()}");
                             return Task.CompletedTask;
                         },
                         OnAuthenticationFailed = context =>
                         {
-                            Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+                            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
+
+                            logger.LogError(context.Exception, "Authentication failed");
                             return Task.CompletedTask;
                         },
-                        OnChallenge = _ =>
+                        OnChallenge = context =>
                         {
-                            Console.WriteLine("Challenging client to authenticate with Entra ID");
+                            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
+
+                            logger.LogError($"Challenging client to authenticate, Error : {context.Error ?? string.Empty}, " +
+                                            $"Description : {context.ErrorDescription ?? context.ErrorDescription}, " +
+                                            $"ErrorUri : {context.ErrorUri ?? string.Empty}");
                             return Task.CompletedTask;
                         }
                     };

@@ -141,6 +141,9 @@
             var identityServerSection = configuration.GetSection(ConfigSectionNames.IDENTITY_SERVER);
             var identityServer = identityServerSection.Get<IdentityServerOptions>();
 
+            var serverSection = configuration.GetSection(ConfigSectionNames.SERVER);
+            var server = serverSection.Get<ServerOptions>();
+
             services
                 .AddHttpClient(HttpClientInstances.IDENTITY_SERVER_HTTP_CLIENT_INSTANCE, client => client.BaseAddress = identityServer.Authority);
 
@@ -152,6 +155,18 @@
                                    System.Security.Authentication.SslProtocols.Tls13,
                     ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 });
+
+            foreach (var mcpServer in server.McpServers)
+            {
+                var httpClientInstanceName = $"{HttpClientInstances.MCP_SERVER_HTTP_CLIENT_INSTANCE}.{mcpServer.Name}";
+                services
+                    .AddHttpClient(httpClientInstanceName, client =>
+                    {
+                        client.BaseAddress = new Uri(mcpServer.BaseUrl);
+                        client.Timeout = TimeSpan.FromSeconds(60);
+                    })
+                    .AddHttpMessageHandler(sp => new AccessTokenHandler(sp));
+            }
 
             return services;
         }

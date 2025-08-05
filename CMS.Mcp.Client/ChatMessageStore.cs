@@ -2,7 +2,8 @@ namespace CMS.Mcp.Client
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Contracts;
     using Contracts.Models;
     using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +11,34 @@ namespace CMS.Mcp.Client
 
     public class ChatMessageStore(IServiceProvider serviceProvider) : IChatMessageStore
     {
+        private readonly SemaphoreSlim _semaphore = new(1, 1);
         private readonly Dictionary<Guid, List<ChatMessageViewModel>> _messages = [];
+
+        private async Task<T> ExecuteUnderSemaphore<T>(Func<T> action)
+        {
+            await _semaphore.WaitAsync();
+            try
+            {
+                return action();
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
+
+        private async Task ExecuteUnderSemaphore(Action action)
+        {
+            await _semaphore.WaitAsync();
+            try
+            {
+                action();
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
 
         public Guid GetUserId()
         {
@@ -18,39 +46,42 @@ namespace CMS.Mcp.Client
             return claimStoreProvider.UserId.GetValueOrDefault();
         }
 
-        public void Add(ChatMessageViewModel message)
+        public async Task AddAsync(ChatMessageViewModel message)
         {
-            var userId = GetUserId();
-            if (!_messages.TryGetValue(userId, out var chatMessages))
+            await ExecuteUnderSemaphore(() =>
             {
-                chatMessages = [];
-                _messages.Add(userId, chatMessages);
-            }
+                var userId = GetUserId();
+                if (!_messages.TryGetValue(userId, out var chatMessages))
+                {
+                    chatMessages = [];
+                    _messages.Add(userId, chatMessages);
+                }
 
-            chatMessages.Add(message);
+                chatMessages.Add(message);
+            });
         }
 
-        public ChatMessageViewModel[] List()
+        public async Task<ChatMessageViewModel[]> ListAsync()
         {
-            var userId = GetUserId();
-            return !_messages.TryGetValue(userId, out var chatMessages) ? [] : chatMessages.ToArray();
-        }
-
-        public ChatMessageViewModel LastOrDefault()
-        {
-            var userId = GetUserId();
-            return !_messages.TryGetValue(userId, out var chatMessages) ? null : chatMessages.LastOrDefault();
-        }
-
-        public void Clear()
-        {
-            var userId = GetUserId();
-            if (!_messages.TryGetValue(userId, out var chatMessages))
+            return await ExecuteUnderSemaphore(() =>
             {
-                return;
-            }
+                var userId = GetUserId();
+                return !_messages.TryGetValue(userId, out var chatMessages) ? [] : chatMessages.ToArray();
+            });
+        }
 
-            chatMessages.Clear();
+        public async Task ClearAsync()
+        {
+            await ExecuteUnderSemaphore(() =>
+            {
+                var userId = GetUserId();
+                if (!_messages.TryGetValue(userId, out var chatMessages))
+                {
+                    return;
+                }
+
+                chatMessages.Clear();
+            });
         }
     }
 }

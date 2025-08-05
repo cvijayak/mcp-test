@@ -16,9 +16,9 @@ namespace CMS.Mcp.Client.Controllers
 
     [Authorize]
     [Route("mcp/chat")]
-    public class ChatController(IChatMessageStore chatMessageStore,
-        IAssistantService assistantService,
+    public class ChatController(IAssistantService assistantService,
         ISuggestionService suggestionService,
+        ISummaryService summaryService,
         Func<string, IMcpToolService> mcpToolServiceFactory,
         IOptions<ServerOptions> serverOptions,
         ILogger<ChatController> logger) : Controller
@@ -75,18 +75,19 @@ namespace CMS.Mcp.Client.Controllers
 
         [HttpPost]
         [Route("ClearChat")]
-        public IActionResult ClearChat()
+        public async Task<IActionResult> ClearChatAsync()
         {
-            assistantService.ClearMessages();
+            await assistantService.ClearMessagesAsync();
+            await summaryService.ClearSummaryAsync();
             return Json(new { success = true, message = "Chat cleared successfully" });
         }
 
         [HttpGet]
         [Authorize]
         [Route("GetMessages")]
-        public IActionResult GetMessages()
+        public async Task<IActionResult> GetMessagesAsync()
         {
-            var messages = chatMessageStore.List();
+            var messages = await assistantService.ListMessagesAsync();
             return Json(messages);
         }
 

@@ -6,11 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\AssemblyInfo.Global.cs" Link="AssemblyInfo.Global.cs" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="9.0.5" />
+    <Compile Include="..\AssemblyInfo.Global.cs" Link="AssemblyInfo.Global.cs" />
   </ItemGroup>
 
 </Project>

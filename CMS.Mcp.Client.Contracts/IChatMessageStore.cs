@@ -1,12 +1,12 @@
 namespace CMS.Mcp.Client.Contracts
 {
+    using System.Threading.Tasks;
     using Models;
 
     public interface IChatMessageStore
     {
-        void Add(ChatMessageViewModel message);
-        ChatMessageViewModel[] List();
-        ChatMessageViewModel LastOrDefault();
-        void Clear();
+        Task AddAsync(ChatMessageViewModel message);
+        Task<ChatMessageViewModel[]> ListAsync();
+        Task ClearAsync();
     }
 }

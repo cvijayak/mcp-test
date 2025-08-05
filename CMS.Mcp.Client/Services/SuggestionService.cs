@@ -144,7 +144,7 @@ namespace CMS.Mcp.Client.Services
                 return suggestionsContent
                     .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(line => line.Trim())
-                    .Select(line => line.StartsWith("-") ? line.Substring(1).Trim() : line)
+                    .Select(line => line.StartsWith("-") ? line[1..].Trim() : line)
                     .Where(line => !string.IsNullOrWhiteSpace(line))
                     .ToArray();
             }
@@ -156,7 +156,9 @@ namespace CMS.Mcp.Client.Services
 
                 if (!string.IsNullOrEmpty(line) && char.IsLower(line[0]))
                 {
-                    line = char.ToUpper(line[0]) + line[1..];
+                    line = line.Length > 1 
+                        ? char.ToUpper(line[0]) + line[1..] 
+                        : char.ToUpper(line[0]).ToString();
                 }
 
                 if (!string.IsNullOrEmpty(line) && !".?!".Contains(line[^1]))

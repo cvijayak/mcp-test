@@ -51,7 +51,9 @@ namespace CMS.Mcp.Client.Services
 
         public async Task SummarizeAsync(Kernel kernel)
         {
-            var messages = chatMessageStore.List().Where(m => !m.IsProcessing).ToArray();
+            var messages = (await chatMessageStore.ListAsync())
+                .Where(m => !m.IsProcessing)
+                .ToArray();
             if (messages.Length == 0)
             {
                 return;
@@ -66,7 +68,7 @@ namespace CMS.Mcp.Client.Services
                 conversationHistory.AppendLine();
             }
 
-            var existingSummary = summaryStore.Get();
+            var existingSummary = await summaryStore.GetAsync();
             var summaryPrompt = $"""
                                     You are an expert at generating structured, context-aware summaries for LLM-driven conversations.
 
@@ -75,7 +77,7 @@ namespace CMS.Mcp.Client.Services
                                     Please summarize the following conversation using the provided structure. Focus on:
                                     - Key technical details, user goals, and decisions made so far
                                     - Open issues or pending follow-ups
-                                    - User’s preferences, requirements, or constraints
+                                    - User's preferences, requirements, or constraints
                                     - Any information that would be important for generating accurate, context-aware future responses
 
                                     Do NOT include irrelevant or repetitive information. Keep the summary clean and focused on what matters most for continuing the conversation.
@@ -110,7 +112,7 @@ namespace CMS.Mcp.Client.Services
                 var rawSummary = summaryResult.GetValue<string>();
                 var processedSummary = PromptingResponseUtility.ExtractSummary(rawSummary);
                 
-                summaryStore.Add(processedSummary);
+                await summaryStore.AddAsync(processedSummary);
             }
             catch (Exception ex)
             {
@@ -118,9 +120,14 @@ namespace CMS.Mcp.Client.Services
             }
         }
 
-        public string Get()
+        public async Task ClearSummaryAsync()
         {
-            return summaryStore.Get();
+            await summaryStore.ClearAsync();
+        }
+
+        public async Task<string> GetSummaryAsync()
+        {
+            return await summaryStore.GetAsync();
         }
     }
 }

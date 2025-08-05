@@ -18,7 +18,7 @@ namespace CMS.Mcp.Client.Services
         Func<string, Kernel> kernelFactory,
         ILogger<AssistantService> logger) : IAssistantService
     {
-        private ChatMessageViewModel AddChatMessage(string message)
+        private async Task<ChatMessageViewModel> AddChatMessageAsync(string message)
         {
             var userMessage = new ChatMessageViewModel
             {
@@ -35,15 +35,15 @@ namespace CMS.Mcp.Client.Services
                 Timestamp = DateTime.UtcNow
             };
 
-            chatMessageStore.Add(userMessage);
-            chatMessageStore.Add(assistantMessage);
+            await chatMessageStore.AddAsync(userMessage);
+            await chatMessageStore.AddAsync(assistantMessage);
 
             return assistantMessage;
         }
 
         public async Task<ChatMessageViewModel> SendMessageAsync(string message, string serverName, CancellationToken cancellationToken)
         {
-            var assistantMessage = AddChatMessage(message);
+            var assistantMessage = await AddChatMessageAsync(message);
 
             try
             {
@@ -83,10 +83,10 @@ namespace CMS.Mcp.Client.Services
                     serverContextBuilder.AppendLine("- No tools information available for this server");
                 }
                 
-                string serverContext = serverContextBuilder.ToString();
-                string conversationSummary = summaryService.Get();
+                var serverContext = serverContextBuilder.ToString();
+                var conversationSummary = await summaryService.GetSummaryAsync();
 
-                string prompt = $"""
+                var prompt = $"""
                                  You are a technical assistant specializing in systems that use MCP servers.
 
                                  Your task is to generate a relevant and context-aware response to the user's latest message.
@@ -121,7 +121,14 @@ namespace CMS.Mcp.Client.Services
 
                 assistantMessage.Content = result.GetValue<string>();
 
-                logger.LogInformation($"Successfully generated response: {assistantMessage.Content[..Math.Min(assistantMessage.Content.Length, 50)]}...");
+                if (assistantMessage.Content != null)
+                {
+                    logger.LogInformation($"Successfully generated response: {assistantMessage.Content[..Math.Min(assistantMessage.Content.Length, 50)]}...");
+                }
+                else
+                {
+                    logger.LogInformation("Successfully generated response: No content generated.");
+                }
 
                 assistantMessage.IsProcessing = false;
 
@@ -138,9 +145,14 @@ namespace CMS.Mcp.Client.Services
             }
         }
 
-        public void ClearMessages()
+        public async Task<ChatMessageViewModel[]> ListMessagesAsync()
         {
-            chatMessageStore.Clear();
+            return await chatMessageStore.ListAsync();
+        }
+
+        public Task ClearMessagesAsync()
+        {
+            return chatMessageStore.ClearAsync();
         }
     }
 }

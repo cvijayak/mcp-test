@@ -6,6 +6,7 @@ namespace CMS.Mcp.Client.Contracts.Services
     public interface ISummaryService
     {
         Task SummarizeAsync(Kernel kernel);
-        string Get();
+        Task ClearSummaryAsync();
+        Task<string> GetSummaryAsync();
     }
 }
